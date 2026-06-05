@@ -51,7 +51,29 @@
             <span id="nextHours">⏱ 0 часов</span>
             <span class="status" id="nextStatus">—</span>
           </div>
-          <button class="wide-btn green" data-scroll="scheduleSection">🗓 Мои смены <span>›</span></button>
+          <div id="shiftLiveTimer" class="shift-live-timer shift-live-neutral">
+          <div class="timer-head">
+            <div>
+              <div id="timerTitle" class="timer-title">⏳ Проверяем смену</div>
+              <div id="timerSubtitle" class="timer-subtitle">Сейчас всё посчитаем</div>
+            </div>
+            <div id="timerBadge" class="timer-badge">—</div>
+          </div>
+
+          <div id="timerValue" class="timer-value">00:00:00</div>
+
+          <div class="progress-wrap">
+            <div id="shiftProgressBar" class="progress-bar"></div>
+          </div>
+
+          <div class="progress-meta">
+            <span id="progressStart">—</span>
+            <span id="progressPercent">0%</span>
+            <span id="progressEnd">—</span>
+          </div>
+        </div>
+
+        <button class="wide-btn green" data-scroll="scheduleSection">🗓 Мои смены <span>›</span></button>
         </section>
 
         <section class="stats-grid">

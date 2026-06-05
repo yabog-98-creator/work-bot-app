@@ -54,6 +54,7 @@ async function loadData() {
 
     currentData = data;
     renderHome(data);
+    startShiftTimer();
 
     document.getElementById("loading").classList.add("hidden");
     document.getElementById("content").classList.remove("hidden");
@@ -552,5 +553,198 @@ document.addEventListener("click", async (event) => {
 });
 
 window.addEventListener("scroll", updateActiveNavOnScroll, { passive: true });
+
+
+// =========================
+// V24 SHIFT LIVE TIMER
+// =========================
+
+let shiftTimerInterval = null;
+
+function pad2(value) {
+  return String(value).padStart(2, "0");
+}
+
+function parseShiftDate(dateText) {
+  if (!dateText) return null;
+  const parts = String(dateText).trim().split(".");
+  if (parts.length !== 3) return null;
+
+  const day = Number(parts[0]);
+  const month = Number(parts[1]) - 1;
+  const year = Number(parts[2]);
+
+  if (!day || month < 0 || !year) return null;
+  return new Date(year, month, day, 0, 0, 0, 0);
+}
+
+function parseShiftTime(shiftText) {
+  if (!shiftText) return null;
+
+  const clean = String(shiftText)
+    .replace(/[–—]/g, "-")
+    .replace(/\s/g, "");
+
+  const parts = clean.split("-");
+  if (parts.length !== 2) return null;
+
+  function parsePart(part) {
+    const pieces = part.split(":");
+    const hour = Number(pieces[0]);
+    const minute = pieces.length > 1 ? Number(pieces[1]) : 0;
+
+    if (Number.isNaN(hour) || Number.isNaN(minute)) return null;
+    return { hour, minute };
+  }
+
+  const start = parsePart(parts[0]);
+  const end = parsePart(parts[1]);
+
+  if (!start || !end) return null;
+  return { start, end };
+}
+
+function getShiftBounds(shift) {
+  const date = parseShiftDate(shift?.date);
+  const time = parseShiftTime(shift?.shift);
+
+  if (!date || !time) return null;
+
+  const start = new Date(date);
+  start.setHours(time.start.hour, time.start.minute, 0, 0);
+
+  const end = new Date(date);
+  end.setHours(time.end.hour, time.end.minute, 0, 0);
+
+  if (end <= start) {
+    end.setDate(end.getDate() + 1);
+  }
+
+  return { start, end };
+}
+
+function formatDuration(ms, withDays = true) {
+  const safe = Math.max(0, ms);
+  let totalSeconds = Math.floor(safe / 1000);
+
+  const days = Math.floor(totalSeconds / 86400);
+  totalSeconds -= days * 86400;
+
+  const hours = Math.floor(totalSeconds / 3600);
+  totalSeconds -= hours * 3600;
+
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds - minutes * 60;
+
+  if (withDays && days > 0) {
+    return `${days}д ${pad2(hours)}:${pad2(minutes)}:${pad2(seconds)}`;
+  }
+
+  return `${pad2(hours)}:${pad2(minutes)}:${pad2(seconds)}`;
+}
+
+function findRelevantShift(data) {
+  const shifts = Array.isArray(data?.upcoming_shifts) ? data.upcoming_shifts : [];
+  const now = new Date();
+
+  const parsed = shifts
+    .map(shift => {
+      const bounds = getShiftBounds(shift);
+      return bounds ? { shift, ...bounds } : null;
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.start - b.start);
+
+  const current = parsed.find(item => now >= item.start && now <= item.end);
+  if (current) {
+    return { type: "current", item: current };
+  }
+
+  const next = parsed.find(item => item.start > now);
+  if (next) {
+    return { type: "next", item: next };
+  }
+
+  return { type: "none", item: null };
+}
+
+function updateShiftTimer() {
+  const card = document.querySelector(".shift-card");
+  const timer = document.getElementById("shiftLiveTimer");
+  const title = document.getElementById("timerTitle");
+  const subtitle = document.getElementById("timerSubtitle");
+  const badge = document.getElementById("timerBadge");
+  const value = document.getElementById("timerValue");
+  const bar = document.getElementById("shiftProgressBar");
+  const startText = document.getElementById("progressStart");
+  const endText = document.getElementById("progressEnd");
+  const percentText = document.getElementById("progressPercent");
+
+  if (!card || !timer || !currentData) return;
+
+  const relevant = findRelevantShift(currentData);
+  const now = new Date();
+
+  timer.classList.remove("shift-live-current", "shift-live-next", "shift-live-empty");
+  card.classList.remove("shift-card-current", "shift-card-next", "shift-card-empty");
+
+  if (relevant.type === "none") {
+    timer.classList.add("shift-live-empty");
+    card.classList.add("shift-card-empty");
+
+    title.textContent = "🔴 Смен пока нет";
+    subtitle.textContent = "Ожидайте назначения";
+    badge.textContent = "Нет смен";
+    value.textContent = "—";
+    bar.style.width = "0%";
+    startText.textContent = "—";
+    endText.textContent = "—";
+    percentText.textContent = "0%";
+    return;
+  }
+
+  const { shift, start, end } = relevant.item;
+  const startLabel = `${pad2(start.getHours())}:${pad2(start.getMinutes())}`;
+  const endLabel = `${pad2(end.getHours())}:${pad2(end.getMinutes())}`;
+
+  startText.textContent = startLabel;
+  endText.textContent = endLabel;
+
+  if (relevant.type === "current") {
+    timer.classList.add("shift-live-current");
+    card.classList.add("shift-card-current");
+
+    const total = end - start;
+    const passed = now - start;
+    const percent = Math.min(100, Math.max(0, Math.round((passed / total) * 100)));
+
+    title.textContent = "🟢 Сейчас на смене";
+    subtitle.textContent = "До конца смены осталось";
+    badge.textContent = "В процессе";
+    value.textContent = formatDuration(end - now, false);
+    bar.style.width = `${percent}%`;
+    percentText.textContent = `${percent}%`;
+    return;
+  }
+
+  timer.classList.add("shift-live-next");
+  card.classList.add("shift-card-next");
+
+  title.textContent = "⚪ Следующая смена";
+  subtitle.textContent = "До начала смены осталось";
+  badge.textContent = "Ожидание";
+  value.textContent = formatDuration(start - now, true);
+  bar.style.width = "0%";
+  percentText.textContent = "0%";
+}
+
+function startShiftTimer() {
+  if (shiftTimerInterval) {
+    clearInterval(shiftTimerInterval);
+  }
+
+  updateShiftTimer();
+  shiftTimerInterval = setInterval(updateShiftTimer, 1000);
+}
 
 loadData();
