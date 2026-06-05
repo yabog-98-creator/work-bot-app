@@ -13,6 +13,13 @@ function formatNumber(value) {
 }
 
 function getTelegramUserId() {
+  const params = new URLSearchParams(window.location.search);
+  const urlId = params.get("tg_id");
+
+  if (urlId && urlId !== "null" && urlId !== "None") {
+    return String(urlId);
+  }
+
   const user = tg?.initDataUnsafe?.user;
   return user?.id ? String(user.id) : null;
 }
