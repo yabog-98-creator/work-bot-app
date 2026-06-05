@@ -1,6 +1,7 @@
 const API_BASE = "https://work-bot-production-4b59.up.railway.app";
 const tg = window.Telegram?.WebApp;
 let currentData = null;
+let currentAdminData = null;
 
 function formatMoney(value) {
   const num = Number(value || 0);
@@ -110,13 +111,16 @@ async function loadAdminData() {
 }
 
 function renderAdminPanel(adminData) {
+  currentAdminData = adminData;
+
   const employeesHtml = (adminData.employees || []).map(emp => `
-    <div class="item">
+    <button class="item employee-card" data-employee-id="${emp.telegram_id}">
       <strong>👤 ${emp.employee}</strong>
       <span class="muted">ID: ${emp.telegram_id}</span>
       <div class="muted">⏱ ${formatNumber(emp.hours)} ч. · ✅ смен: ${emp.confirmed_shifts} · 📅 впереди: ${emp.upcoming_shifts_count}</div>
       <div>💰 ${formatMoney(emp.salary_after_fines)} · ставка ${formatMoney(emp.rate)}/час</div>
-    </div>
+      <div class="muted">Нажми, чтобы открыть карточку сотрудника →</div>
+    </button>
   `).join("");
 
   const finesHtml = (adminData.recent_fines || []).length
@@ -154,6 +158,64 @@ function renderAdminPanel(adminData) {
     <h3 class="panel-subtitle">⚠️ Проблемные смены</h3>
     ${problemsHtml}
   `;
+}
+
+async function renderEmployeeDetails(telegramId) {
+  const panel = document.getElementById("detailsPanel");
+  const title = document.getElementById("panelTitle");
+  const content = document.getElementById("panelContent");
+
+  panel.classList.add("visible");
+  title.textContent = "👤 Карточка сотрудника";
+  content.innerHTML = `<div class="item muted">Загружаем карточку сотрудника...</div>`;
+
+  try {
+    const response = await fetch(`${API_BASE}/api/user/${telegramId}`);
+    const emp = await response.json();
+
+    if (!emp.ok) {
+      throw new Error(emp.error || "Сотрудник не найден");
+    }
+
+    const shiftsHtml = (emp.upcoming_shifts || []).length
+      ? emp.upcoming_shifts.map(s => `
+        <div class="item">
+          <strong>📅 ${s.date} · ${s.shift}</strong>
+          <div class="muted">⏱ ${s.hours} ч. · ${s.confirmed ? "✅ Подтверждена" : "⏳ Ожидает"}</div>
+        </div>
+      `).join("")
+      : `<div class="item muted">Ближайших смен нет</div>`;
+
+    content.innerHTML = `
+      <button class="item" data-tab="admin">
+        <strong>⬅️ Назад к админ-панели</strong>
+      </button>
+
+      <div class="item">
+        <strong>👤 ${emp.employee}</strong>
+        <span class="muted">ID: ${emp.telegram_id}</span>
+        <div class="muted">${emp.role === "admin" ? "Администратор" : "Сотрудник"}</div>
+      </div>
+
+      <div class="item"><strong>⏱ Часы</strong>${formatNumber(emp.hours)} ч.</div>
+      <div class="item"><strong>✅ Подтверждённые смены</strong>${formatNumber(emp.confirmed_shifts)}</div>
+      <div class="item"><strong>📅 Ближайшие смены</strong>${formatNumber(emp.upcoming_shifts_count)}</div>
+      <div class="item"><strong>💵 Ставка</strong>${formatMoney(emp.rate)} / час</div>
+      <div class="item"><strong>💰 Начислено</strong>${formatMoney(emp.salary)}</div>
+      <div class="item"><strong>💸 Штрафы</strong>${formatMoney(emp.fines_total)}</div>
+      <div class="item"><strong>✅ К выплате</strong>${formatMoney(emp.salary_after_fines)}</div>
+
+      <h3 class="panel-subtitle">📅 Ближайшие смены</h3>
+      ${shiftsHtml}
+    `;
+  } catch (error) {
+    content.innerHTML = `
+      <button class="item" data-tab="admin">
+        <strong>⬅️ Назад к админ-панели</strong>
+      </button>
+      <div class="item muted">Ошибка: ${error.message}</div>
+    `;
+  }
 }
 
 function renderPanel(tab) {
@@ -238,6 +300,16 @@ function renderPanel(tab) {
 }
 
 document.addEventListener("click", (event) => {
+  const employeeCard = event.target.closest("[data-employee-id]");
+  if (employeeCard) {
+    if (tg?.HapticFeedback) {
+      tg.HapticFeedback.impactOccurred("light");
+    }
+
+    renderEmployeeDetails(employeeCard.dataset.employeeId);
+    return;
+  }
+
   const btn = event.target.closest("button[data-tab]");
   if (!btn) return;
 
