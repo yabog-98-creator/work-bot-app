@@ -555,6 +555,45 @@ document.addEventListener("click", async (event) => {
 window.addEventListener("scroll", updateActiveNavOnScroll, { passive: true });
 
 
+
+function findNextShiftAfterCurrent(data) {
+  const shifts = Array.isArray(data?.upcoming_shifts) ? data.upcoming_shifts : [];
+  const now = new Date();
+
+  const parsed = shifts
+    .map(shift => {
+      const bounds = getShiftBounds(shift);
+      return bounds ? { shift, ...bounds } : null;
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.start - b.start);
+
+  return parsed.find(item => item.start > now) || null;
+}
+
+function updateNextShiftCountdownCard() {
+  const card = document.getElementById("nextShiftCountdownCard");
+  const value = document.getElementById("nextCountdownValue");
+  const date = document.getElementById("nextCountdownDate");
+  const shift = document.getElementById("nextCountdownShift");
+
+  if (!card || !currentData) return;
+
+  const next = findNextShiftAfterCurrent(currentData);
+
+  if (!next) {
+    card.classList.add("hidden");
+    return;
+  }
+
+  card.classList.remove("hidden");
+
+  value.textContent = formatDuration(next.start - new Date(), true);
+  date.textContent = next.shift.date || "—";
+  shift.textContent = next.shift.shift || "—";
+}
+
+
 // =========================
 // V24 SHIFT LIVE TIMER
 // =========================
@@ -668,6 +707,20 @@ function findRelevantShift(data) {
   return { type: "none", item: null };
 }
 
+
+function formatShortElapsed(ms) {
+  const safe = Math.max(0, ms);
+  let totalMinutes = Math.floor(safe / 60000);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes - hours * 60;
+  return `${pad2(hours)}:${pad2(minutes)}`;
+}
+
+function setTextIfExists(id, text) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = text;
+}
+
 function updateShiftTimer() {
   const card = document.querySelector(".shift-card");
   const timer = document.getElementById("shiftLiveTimer");
@@ -679,6 +732,7 @@ function updateShiftTimer() {
   const startText = document.getElementById("progressStart");
   const endText = document.getElementById("progressEnd");
   const percentText = document.getElementById("progressPercent");
+  const progressMiddle = document.getElementById("progressMiddle");
 
   if (!card || !timer || !currentData) return;
 
@@ -700,6 +754,12 @@ function updateShiftTimer() {
     startText.textContent = "—";
     endText.textContent = "—";
     percentText.textContent = "0%";
+    if (progressMiddle) progressMiddle.textContent = "Прошло: 00:00";
+    setTextIfExists("timerInfoDate", "—");
+    setTextIfExists("timerInfoShift", "—");
+    setTextIfExists("timerInfoHours", "—");
+    setTextIfExists("timerWorked", "Отработано: 0%");
+    setTextIfExists("timerDayLabel", "—");
     return;
   }
 
@@ -709,6 +769,9 @@ function updateShiftTimer() {
 
   startText.textContent = startLabel;
   endText.textContent = endLabel;
+  setTextIfExists("timerInfoDate", shift.date || "—");
+  setTextIfExists("timerInfoShift", shift.shift || "—");
+  setTextIfExists("timerInfoHours", `${shift.hours || 0} часов`);
 
   if (relevant.type === "current") {
     timer.classList.add("shift-live-current");
@@ -723,7 +786,11 @@ function updateShiftTimer() {
     badge.textContent = "В процессе";
     value.textContent = formatDuration(end - now, false);
     bar.style.width = `${percent}%`;
+    timer.style.setProperty("--ring-progress", `${percent}%`);
     percentText.textContent = `${percent}%`;
+    if (progressMiddle) progressMiddle.textContent = `Прошло: ${formatShortElapsed(passed)}`;
+    setTextIfExists("timerWorked", `Отработано: ${percent}%`);
+    setTextIfExists("timerDayLabel", "Сегодня");
     return;
   }
 
@@ -735,7 +802,11 @@ function updateShiftTimer() {
   badge.textContent = "Ожидание";
   value.textContent = formatDuration(start - now, true);
   bar.style.width = "0%";
+  timer.style.setProperty("--ring-progress", "0%");
   percentText.textContent = "0%";
+  if (progressMiddle) progressMiddle.textContent = "Ожидание";
+  setTextIfExists("timerWorked", "Ожидает начала");
+  setTextIfExists("timerDayLabel", "Дата");
 }
 
 function startShiftTimer() {
@@ -744,7 +815,11 @@ function startShiftTimer() {
   }
 
   updateShiftTimer();
-  shiftTimerInterval = setInterval(updateShiftTimer, 1000);
+  updateNextShiftCountdownCard();
+  shiftTimerInterval = setInterval(() => {
+    updateShiftTimer();
+    updateNextShiftCountdownCard();
+  }, 1000);
 }
 
 loadData();

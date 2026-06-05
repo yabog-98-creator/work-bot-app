@@ -52,15 +52,49 @@
             <span class="status" id="nextStatus">—</span>
           </div>
           <div id="shiftLiveTimer" class="shift-live-timer shift-live-neutral">
-          <div class="timer-head">
-            <div>
-              <div id="timerTitle" class="timer-title">⏳ Проверяем смену</div>
-              <div id="timerSubtitle" class="timer-subtitle">Сейчас всё посчитаем</div>
-            </div>
+          <div class="timer-topline">
+            <div id="timerTitle" class="timer-title">⏳ Проверяем смену</div>
             <div id="timerBadge" class="timer-badge">—</div>
           </div>
 
-          <div id="timerValue" class="timer-value">00:00:00</div>
+          <div class="timer-main-row">
+            <div class="timer-ring">
+              <div class="timer-ring-inner">🕘</div>
+            </div>
+
+            <div class="timer-center">
+              <div id="timerSubtitle" class="timer-subtitle">Сейчас всё посчитаем</div>
+              <div id="timerValue" class="timer-value">00:00:00</div>
+              <div class="timer-labels">
+                <span>часы</span>
+                <span>минуты</span>
+                <span>секунды</span>
+              </div>
+            </div>
+
+            <div class="timer-info">
+              <div class="timer-info-line">
+                <span>📅</span>
+                <div>
+                  <small id="timerDayLabel">Сегодня</small>
+                  <strong id="timerInfoDate">—</strong>
+                </div>
+              </div>
+              <div class="timer-info-line">
+                <span>🕘</span>
+                <div>
+                  <strong id="timerInfoShift">—</strong>
+                  <small id="timerInfoHours">—</small>
+                </div>
+              </div>
+              <div id="timerWorked" class="timer-worked">Отработано: 0%</div>
+            </div>
+          </div>
+
+          <div class="progress-title-row">
+            <span>Прогресс смены</span>
+            <strong id="progressPercent">0%</strong>
+          </div>
 
           <div class="progress-wrap">
             <div id="shiftProgressBar" class="progress-bar"></div>
@@ -68,7 +102,7 @@
 
           <div class="progress-meta">
             <span id="progressStart">—</span>
-            <span id="progressPercent">0%</span>
+            <span id="progressMiddle">Прошло: 00:00</span>
             <span id="progressEnd">—</span>
           </div>
         </div>
