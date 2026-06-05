@@ -196,6 +196,162 @@ async function adminAddShiftEmployee(telegramId) {
   }
 }
 
+function itemHtml(title, value, muted = "") {
+  return `
+    <div class="item">
+      <strong>${title}</strong>
+      <div>${value}</div>
+      ${muted ? `<div class="muted">${muted}</div>` : ""}
+    </div>
+  `;
+}
+
+function renderScheduleSection(data) {
+  const box = document.getElementById("scheduleContent");
+  if (!box) return;
+
+  if (!data.upcoming_shifts?.length) {
+    box.innerHTML = `<div class="item muted">Ближайших смен нет</div>`;
+    return;
+  }
+
+  box.innerHTML = data.upcoming_shifts.map(s => `
+    <div class="item">
+      <strong>${s.date} · ${s.shift}</strong>
+      <div class="muted">⏱ ${s.hours} ч. · ${s.confirmed ? "✅ Подтверждена" : "⏳ Ожидает"}</div>
+    </div>
+  `).join("");
+}
+
+function renderSalarySection(data) {
+  const box = document.getElementById("salaryContent");
+  if (!box) return;
+
+  box.innerHTML = `
+    ${itemHtml("✅ К выплате", formatMoney(data.salary_after_fines))}
+    ${itemHtml("💰 Начислено", formatMoney(data.salary))}
+    ${itemHtml("💵 Ставка", `${formatMoney(data.rate)} / час`)}
+    ${itemHtml("⏱ Отработано", `${formatNumber(data.hours)} ч.`)}
+    ${itemHtml("💸 Штрафы", formatMoney(data.fines_total))}
+  `;
+}
+
+function renderFinesSection(data) {
+  const box = document.getElementById("finesContent");
+  if (!box) return;
+
+  box.innerHTML = `
+    ${itemHtml("💸 Всего штрафов", formatMoney(data.fines_total))}
+    ${itemHtml("📄 Количество", formatNumber(data.fines_count))}
+  `;
+}
+
+function renderStatsSection(data) {
+  const box = document.getElementById("statsContent");
+  if (!box) return;
+
+  box.innerHTML = `
+    ${itemHtml("✅ Подтверждённые смены", formatNumber(data.confirmed_shifts))}
+    ${itemHtml("📅 Ближайшие смены", formatNumber(data.upcoming_shifts_count))}
+    ${itemHtml("⏱ Часы", `${formatNumber(data.hours)} ч.`)}
+    ${itemHtml("💵 Ставка", `${formatMoney(data.rate)} / час`)}
+  `;
+}
+
+function renderProfileSection(data) {
+  const box = document.getElementById("profileContent");
+  if (!box) return;
+
+  box.innerHTML = `
+    ${itemHtml(`👤 ${data.employee}`, `ID: ${data.telegram_id}`)}
+    ${itemHtml("Роль", data.role === "admin" ? "Администратор" : "Сотрудник")}
+  `;
+}
+
+function renderAllSections(data) {
+  renderScheduleSection(data);
+  renderSalarySection(data);
+  renderFinesSection(data);
+  renderStatsSection(data);
+  renderProfileSection(data);
+
+  if (data.role === "admin") {
+    setupAdminAccess();
+  }
+}
+
+function setupAdminAccess() {
+  const actionsGrid = document.getElementById("actionsGrid");
+  const bottomNav = document.getElementById("bottomNav");
+  const adminSection = document.getElementById("adminSection");
+
+  if (adminSection) {
+    adminSection.classList.remove("hidden");
+  }
+
+  if (actionsGrid && !document.getElementById("adminActionBtn")) {
+    actionsGrid.insertAdjacentHTML(
+      "afterbegin",
+      `<button id="adminActionBtn" data-scroll="adminSection">👑<span>Админ</span></button>`
+    );
+  }
+
+  if (bottomNav && !document.getElementById("adminNavBtn")) {
+    bottomNav.insertAdjacentHTML(
+      "beforeend",
+      `<button id="adminNavBtn" data-scroll="adminSection">👑<span>Админ</span></button>`
+    );
+    bottomNav.classList.add("admin-nav");
+  }
+
+  renderAdminSection();
+}
+
+async function renderAdminSection() {
+  const box = document.getElementById("adminContent");
+  if (!box) return;
+
+  box.innerHTML = `<div class="item muted">Загружаем админ-панель...</div>`;
+
+  try {
+    const adminData = await loadAdminData();
+    currentAdminData = adminData;
+    box.innerHTML = renderAdminPanel(adminData);
+  } catch (error) {
+    box.innerHTML = `<div class="item muted">Ошибка: ${error.message}</div>`;
+  }
+}
+
+function renderHome(data) {
+  const name = data.employee || "Сотрудник";
+  document.getElementById("hello").textContent = `Привет, ${name}! 👋`;
+  document.getElementById("avatar").textContent = name[0]?.toUpperCase() || "A";
+  document.getElementById("roleText").textContent = data.role === "admin" ? "Панель администратора" : "Рады видеть тебя снова";
+
+  document.getElementById("salaryAfterFines").textContent = formatMoney(data.salary_after_fines);
+  document.getElementById("salary").textContent = formatMoney(data.salary);
+  document.getElementById("fines").textContent = formatMoney(data.fines_total);
+
+  document.getElementById("hours").textContent = formatNumber(data.hours);
+  document.getElementById("confirmedShifts").textContent = formatNumber(data.confirmed_shifts);
+  document.getElementById("rate").textContent = formatMoney(data.rate);
+  document.getElementById("notifyCount").textContent = data.upcoming_shifts_count || 0;
+
+  if (data.next_shift) {
+    document.getElementById("nextDate").textContent = data.next_shift.date;
+    document.getElementById("nextTime").textContent = `🕘 ${data.next_shift.shift}`;
+    document.getElementById("nextHours").textContent = `⏱ ${data.next_shift.hours} часов`;
+    document.getElementById("nextStatus").textContent = data.next_shift.confirmed ? "✅ Подтверждена" : "⏳ Ожидает";
+  } else {
+    document.getElementById("nextDate").textContent = "Нет смен";
+    document.getElementById("nextTime").textContent = "🕘 —";
+    document.getElementById("nextHours").textContent = "⏱ 0 часов";
+    document.getElementById("nextStatus").textContent = "—";
+  }
+
+  renderAllSections(data);
+}
+
 function renderAdminPanel(adminData) {
   currentAdminData = adminData;
 
@@ -230,10 +386,11 @@ function renderAdminPanel(adminData) {
     : `<div class="item muted">Проблемных смен пока нет</div>`;
 
   return `
-    <div class="item"><strong>👥 Сотрудников</strong>${adminData.employees_count}</div>
-    <div class="item"><strong>⏱ Всего часов</strong>${formatNumber(adminData.total_hours)} ч.</div>
-    <div class="item"><strong>💰 К выплате всего</strong>${formatMoney(adminData.total_after_fines)}</div>
-    <div class="item"><strong>💸 Штрафы всего</strong>${formatMoney(adminData.total_fines)}</div>
+    <div class="admin-summary">
+      <div class="mini-stat"><span>👥</span><strong>${adminData.employees_count}</strong><small>сотрудников</small></div>
+      <div class="mini-stat"><span>⏱</span><strong>${formatNumber(adminData.total_hours)}</strong><small>часов</small></div>
+      <div class="mini-stat"><span>💰</span><strong>${formatMoney(adminData.total_after_fines)}</strong><small>к выплате</small></div>
+    </div>
 
     <h3 class="panel-subtitle">👥 Сотрудники</h3>
     ${employeesHtml || `<div class="item muted">Сотрудников пока нет</div>`}
@@ -247,13 +404,11 @@ function renderAdminPanel(adminData) {
 }
 
 async function renderEmployeeDetails(telegramId) {
-  const panel = document.getElementById("detailsPanel");
-  const title = document.getElementById("panelTitle");
-  const content = document.getElementById("panelContent");
+  const adminBox = document.getElementById("adminContent");
+  if (!adminBox) return;
 
-  panel.classList.add("visible");
-  title.textContent = "👤 Карточка сотрудника";
-  content.innerHTML = `<div class="item muted">Загружаем карточку сотрудника...</div>`;
+  adminBox.innerHTML = `<div class="item muted">Загружаем карточку сотрудника...</div>`;
+  scrollToSection("adminSection");
 
   try {
     const response = await fetch(`${API_BASE}/api/user/${telegramId}`);
@@ -272,46 +427,46 @@ async function renderEmployeeDetails(telegramId) {
       `).join("")
       : `<div class="item muted">Ближайших смен нет</div>`;
 
-    content.innerHTML = `
-      <button class="item" data-tab="admin">
+    adminBox.innerHTML = `
+      <button class="item" data-admin-back="true">
         <strong>⬅️ Назад к админ-панели</strong>
       </button>
 
-      <div class="item">
+      <div class="item employee-head">
         <strong>👤 ${emp.employee}</strong>
         <span class="muted">ID: ${emp.telegram_id}</span>
         <div class="muted">${emp.role === "admin" ? "Администратор" : "Сотрудник"}</div>
       </div>
 
       <h3 class="panel-subtitle">⚡ Быстрые действия</h3>
-      <button class="item" data-admin-action="remind" data-action-employee-id="${emp.telegram_id}">
+      <button class="item action-item" data-admin-action="remind" data-action-employee-id="${emp.telegram_id}">
         <strong>📣 Напомнить о ближайшей смене</strong>
         <span class="muted">Отправит сотруднику уведомление в Telegram</span>
       </button>
-      <button class="item" data-admin-action="fine" data-action-employee-id="${emp.telegram_id}">
+      <button class="item action-item" data-admin-action="fine" data-action-employee-id="${emp.telegram_id}">
         <strong>💸 Выписать штраф</strong>
         <span class="muted">Запишет штраф в таблицу fines</span>
       </button>
-      <button class="item" data-admin-action="add_shift" data-action-employee-id="${emp.telegram_id}">
+      <button class="item action-item" data-admin-action="add_shift" data-action-employee-id="${emp.telegram_id}">
         <strong>➕ Добавить смену</strong>
         <span class="muted">Добавит смену в schedule</span>
       </button>
 
       <h3 class="panel-subtitle">📊 Статистика</h3>
-      <div class="item"><strong>⏱ Часы</strong>${formatNumber(emp.hours)} ч.</div>
-      <div class="item"><strong>✅ Подтверждённые смены</strong>${formatNumber(emp.confirmed_shifts)}</div>
-      <div class="item"><strong>📅 Ближайшие смены</strong>${formatNumber(emp.upcoming_shifts_count)}</div>
-      <div class="item"><strong>💵 Ставка</strong>${formatMoney(emp.rate)} / час</div>
-      <div class="item"><strong>💰 Начислено</strong>${formatMoney(emp.salary)}</div>
-      <div class="item"><strong>💸 Штрафы</strong>${formatMoney(emp.fines_total)}</div>
-      <div class="item"><strong>✅ К выплате</strong>${formatMoney(emp.salary_after_fines)}</div>
+      ${itemHtml("⏱ Часы", `${formatNumber(emp.hours)} ч.`)}
+      ${itemHtml("✅ Подтверждённые смены", formatNumber(emp.confirmed_shifts))}
+      ${itemHtml("📅 Ближайшие смены", formatNumber(emp.upcoming_shifts_count))}
+      ${itemHtml("💵 Ставка", `${formatMoney(emp.rate)} / час`)}
+      ${itemHtml("💰 Начислено", formatMoney(emp.salary))}
+      ${itemHtml("💸 Штрафы", formatMoney(emp.fines_total))}
+      ${itemHtml("✅ К выплате", formatMoney(emp.salary_after_fines))}
 
       <h3 class="panel-subtitle">📅 Ближайшие смены</h3>
       ${shiftsHtml}
     `;
   } catch (error) {
-    content.innerHTML = `
-      <button class="item" data-tab="admin">
+    adminBox.innerHTML = `
+      <button class="item" data-admin-back="true">
         <strong>⬅️ Назад к админ-панели</strong>
       </button>
       <div class="item muted">Ошибка: ${error.message}</div>
@@ -319,134 +474,83 @@ async function renderEmployeeDetails(telegramId) {
   }
 }
 
-function renderPanel(tab) {
-  const panel = document.getElementById("detailsPanel");
-  const title = document.getElementById("panelTitle");
-  const content = document.getElementById("panelContent");
+function scrollToSection(sectionId) {
+  const section = document.getElementById(sectionId);
+  if (!section) return;
 
-  if (!currentData || tab === "home") {
-    panel.classList.remove("visible");
-    return;
-  }
+  section.scrollIntoView({
+    behavior: "smooth",
+    block: "start"
+  });
 
-  panel.classList.add("visible");
+  document.querySelectorAll(".bottom-nav button").forEach(b => b.classList.remove("active"));
+  const navBtn = document.querySelector(`.bottom-nav button[data-scroll="${sectionId}"]`);
+  if (navBtn) navBtn.classList.add("active");
+}
 
-  if (tab === "admin") {
-    title.textContent = "👑 Админ-панель";
-    content.innerHTML = `<div class="item muted">Загружаем админ-панель...</div>`;
+function updateActiveNavOnScroll() {
+  const sections = [
+    "homeSection",
+    "scheduleSection",
+    "salarySection",
+    "finesSection",
+    "profileSection",
+    "adminSection"
+  ];
 
-    if (currentData.role !== "admin") {
-      content.innerHTML = `<div class="item muted">Нет доступа</div>`;
-      return;
-    }
+  let current = "homeSection";
 
-    loadAdminData()
-      .then(adminData => {
-        content.innerHTML = renderAdminPanel(adminData);
-      })
-      .catch(error => {
-        content.innerHTML = `<div class="item muted">Ошибка: ${error.message}</div>`;
-      });
-    return;
-  }
+  sections.forEach(id => {
+    const section = document.getElementById(id);
+    if (!section || section.classList.contains("hidden")) return;
 
-  if (tab === "schedule") {
-    title.textContent = "📅 Мои смены";
-    if (!currentData.upcoming_shifts?.length) {
-      content.innerHTML = `<div class="item muted">Ближайших смен нет</div>`;
-    } else {
-      content.innerHTML = currentData.upcoming_shifts.map(s => `
-        <div class="item">
-          <strong>${s.date} · ${s.shift}</strong>
-          <div class="muted">⏱ ${s.hours} ч. · ${s.confirmed ? "✅ Подтверждена" : "⏳ Ожидает"}</div>
-        </div>
-      `).join("");
-    }
-  }
+    const rect = section.getBoundingClientRect();
+    if (rect.top <= 160) current = id;
+  });
 
-  if (tab === "salary") {
-    title.textContent = "💰 Зарплата";
-    content.innerHTML = `
-      <div class="item"><strong>К выплате</strong>${formatMoney(currentData.salary_after_fines)}</div>
-      <div class="item"><strong>Начислено</strong>${formatMoney(currentData.salary)}</div>
-      <div class="item"><strong>Ставка</strong>${formatMoney(currentData.rate)} / час</div>
-      <div class="item"><strong>Отработано</strong>${formatNumber(currentData.hours)} ч.</div>
-    `;
-  }
-
-  if (tab === "fines") {
-    title.textContent = "💸 Штрафы";
-    content.innerHTML = `
-      <div class="item"><strong>Всего штрафов</strong>${formatMoney(currentData.fines_total)}</div>
-      <div class="item muted">Количество: ${currentData.fines_count}</div>
-    `;
-  }
-
-  if (tab === "stats") {
-    title.textContent = "📊 Статистика";
-    content.innerHTML = `
-      <div class="item"><strong>Подтверждённые смены</strong>${currentData.confirmed_shifts}</div>
-      <div class="item"><strong>Ближайшие смены</strong>${currentData.upcoming_shifts_count}</div>
-      <div class="item"><strong>Часы</strong>${formatNumber(currentData.hours)} ч.</div>
-    `;
-  }
-
-  if (tab === "profile") {
-    title.textContent = "👤 Профиль";
-    content.innerHTML = `
-      <div class="item"><strong>${currentData.employee}</strong><span class="muted">ID: ${currentData.telegram_id}</span></div>
-      <div class="item"><strong>Роль</strong>${currentData.role === "admin" ? "Администратор" : "Сотрудник"}</div>
-    `;
-  }
+  document.querySelectorAll(".bottom-nav button").forEach(b => b.classList.remove("active"));
+  const navBtn = document.querySelector(`.bottom-nav button[data-scroll="${current}"]`);
+  if (navBtn) navBtn.classList.add("active");
 }
 
 document.addEventListener("click", async (event) => {
+  const scrollBtn = event.target.closest("[data-scroll]");
+  if (scrollBtn) {
+    if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred("light");
+    scrollToSection(scrollBtn.dataset.scroll);
+    return;
+  }
+
+  const adminBack = event.target.closest("[data-admin-back]");
+  if (adminBack) {
+    if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred("light");
+    await renderAdminSection();
+    scrollToSection("adminSection");
+    return;
+  }
+
   const adminActionBtn = event.target.closest("[data-admin-action]");
   if (adminActionBtn) {
-    if (tg?.HapticFeedback) {
-      tg.HapticFeedback.impactOccurred("medium");
-    }
+    if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred("medium");
 
     const action = adminActionBtn.dataset.adminAction;
     const telegramId = adminActionBtn.dataset.actionEmployeeId;
 
-    if (action === "remind") {
-      await adminRemindEmployee(telegramId);
-    }
-
-    if (action === "fine") {
-      await adminFineEmployee(telegramId);
-    }
-
-    if (action === "add_shift") {
-      await adminAddShiftEmployee(telegramId);
-    }
+    if (action === "remind") await adminRemindEmployee(telegramId);
+    if (action === "fine") await adminFineEmployee(telegramId);
+    if (action === "add_shift") await adminAddShiftEmployee(telegramId);
 
     return;
   }
 
   const employeeCard = event.target.closest("[data-employee-id]");
   if (employeeCard) {
-    if (tg?.HapticFeedback) {
-      tg.HapticFeedback.impactOccurred("light");
-    }
-
+    if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred("light");
     renderEmployeeDetails(employeeCard.dataset.employeeId);
     return;
   }
-
-  const btn = event.target.closest("button[data-tab]");
-  if (!btn) return;
-
-  document.querySelectorAll(".bottom-nav button").forEach(b => b.classList.remove("active"));
-  const navBtn = document.querySelector(`.bottom-nav button[data-tab="${btn.dataset.tab}"]`);
-  if (navBtn) navBtn.classList.add("active");
-
-  if (tg?.HapticFeedback) {
-    tg.HapticFeedback.impactOccurred("light");
-  }
-
-  renderPanel(btn.dataset.tab);
 });
+
+window.addEventListener("scroll", updateActiveNavOnScroll, { passive: true });
 
 loadData();

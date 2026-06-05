@@ -1,5 +1,3 @@
-# ZDRASTE WORK Mini App V17
+# V22 Scroll Navigation
 
-Версия с реальными данными из Railway API.
-
-API: https://work-bot-production-4b59.up.railway.app/api/user/<telegram_id>
+Замените файлы в work-bot-app.

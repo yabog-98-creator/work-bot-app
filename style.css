@@ -356,3 +356,149 @@ body {
   color: #ff9aac;
   line-height: 1.5;
 }
+
+
+/* =========================
+   V22 SCROLL NAVIGATION
+========================= */
+
+html {
+  scroll-behavior: smooth;
+}
+
+.app-section {
+  scroll-margin-top: 18px;
+  margin-bottom: 22px;
+}
+
+.page-card {
+  background: rgba(255,255,255,0.065);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 30px;
+  padding: 20px;
+  box-shadow: 0 18px 45px rgba(0,0,0,0.22);
+}
+
+.page-title {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.page-title > span {
+  min-width: 54px;
+  height: 54px;
+  border-radius: 18px;
+  display: grid;
+  place-items: center;
+  background: rgba(255,255,255,0.08);
+  font-size: 28px;
+}
+
+.page-title h2 {
+  margin: 0;
+  font-size: 25px;
+}
+
+.page-title p {
+  margin: 4px 0 0;
+  color: #9da0b3;
+  font-size: 14px;
+}
+
+.panel-subtitle {
+  margin: 20px 0 10px;
+  color: #f2f2ff;
+  font-size: 18px;
+}
+
+.admin-summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 9px;
+  margin-bottom: 18px;
+}
+
+.mini-stat {
+  background: rgba(0,0,0,0.22);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 20px;
+  padding: 12px 8px;
+  text-align: center;
+}
+
+.mini-stat span {
+  display: block;
+  font-size: 22px;
+  margin-bottom: 5px;
+}
+
+.mini-stat strong {
+  display: block;
+  font-size: 15px;
+  margin-bottom: 4px;
+  word-break: break-word;
+}
+
+.mini-stat small {
+  color: #9da0b3;
+  font-size: 10px;
+}
+
+.employee-card,
+.action-item,
+button.item {
+  width: 100%;
+  text-align: left;
+  color: white;
+  border: none;
+  font-family: inherit;
+}
+
+.employee-card {
+  cursor: pointer;
+}
+
+.employee-head {
+  background: linear-gradient(135deg, rgba(142,92,255,0.18), rgba(20,241,149,0.08));
+}
+
+.item div {
+  margin-top: 4px;
+}
+
+.bottom-nav.admin-nav {
+  grid-template-columns: repeat(6, 1fr);
+}
+
+.bottom-nav.admin-nav button {
+  font-size: 19px;
+}
+
+.bottom-nav.admin-nav button span {
+  font-size: 10px;
+}
+
+#adminSection {
+  background: linear-gradient(135deg, rgba(80, 38, 150, 0.23), rgba(255,255,255,0.06));
+  border-color: rgba(181,108,255,0.28);
+}
+
+@media (max-width: 380px) {
+  .balance-card h2 {
+    font-size: 42px;
+  }
+
+  .shift-card h2 {
+    font-size: 34px;
+  }
+
+  .admin-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .bottom-nav {
+    height: 74px;
+  }
+}

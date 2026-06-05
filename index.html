@@ -21,80 +21,145 @@
     <div id="loading" class="loading">Загружаем данные...</div>
 
     <main id="content" class="hidden">
-      <section class="profile-card glass">
-        <div class="avatar" id="avatar">A</div>
-        <div>
-          <h1 id="hello">Привет!</h1>
-          <p id="roleText">Рады видеть тебя снова</p>
-          <div class="badge">⭐ Сотрудник</div>
-        </div>
+
+      <section id="homeSection" class="app-section">
+        <section class="profile-card glass">
+          <div class="avatar" id="avatar">A</div>
+          <div>
+            <h1 id="hello">Привет!</h1>
+            <p id="roleText">Рады видеть тебя снова</p>
+            <div class="badge">⭐ Сотрудник</div>
+          </div>
+        </section>
+
+        <section class="balance-card">
+          <div>
+            <p class="label">К выплате</p>
+            <h2 id="salaryAfterFines">0 ₽</h2>
+            <p class="line good">💼 Начислено: <span id="salary">0 ₽</span></p>
+            <p class="line bad">🛡️ Штрафы: <span id="fines">0 ₽</span></p>
+          </div>
+          <div class="wallet">💜</div>
+          <button class="wide-btn" data-scroll="salarySection">💳 Финансы <span>›</span></button>
+        </section>
+
+        <section class="shift-card">
+          <div class="section-title">Следующая смена</div>
+          <h2 id="nextDate">Нет смен</h2>
+          <div class="shift-meta">
+            <span id="nextTime">🕘 —</span>
+            <span id="nextHours">⏱ 0 часов</span>
+            <span class="status" id="nextStatus">—</span>
+          </div>
+          <button class="wide-btn green" data-scroll="scheduleSection">🗓 Мои смены <span>›</span></button>
+        </section>
+
+        <section class="stats-grid">
+          <div class="stat-card blue">
+            <div class="stat-icon">🕒</div>
+            <p>Всего часов</p>
+            <h3 id="hours">0</h3>
+            <span>подтверждено</span>
+          </div>
+          <div class="stat-card gold">
+            <div class="stat-icon">📅</div>
+            <p>Смены</p>
+            <h3 id="confirmedShifts">0</h3>
+            <span>подтверждено</span>
+          </div>
+          <div class="stat-card purple">
+            <div class="stat-icon">💵</div>
+            <p>Ставка</p>
+            <h3 id="rate">0 ₽</h3>
+            <span>в час</span>
+          </div>
+        </section>
+
+        <section>
+          <h2 class="block-title">Быстрые действия</h2>
+          <div class="actions-grid" id="actionsGrid">
+            <button data-scroll="scheduleSection">📅<span>Мои смены</span></button>
+            <button data-scroll="salarySection">💵<span>Зарплата</span></button>
+            <button data-scroll="finesSection">📄<span>Штрафы</span></button>
+            <button data-scroll="statsSection">📊<span>Статистика</span></button>
+          </div>
+        </section>
       </section>
 
-      <section class="balance-card">
-        <div>
-          <p class="label">К выплате</p>
-          <h2 id="salaryAfterFines">0 ₽</h2>
-          <p class="line good">💼 Начислено: <span id="salary">0 ₽</span></p>
-          <p class="line bad">🛡️ Штрафы: <span id="fines">0 ₽</span></p>
+      <section id="scheduleSection" class="app-section page-card">
+        <div class="page-title">
+          <span>📅</span>
+          <div>
+            <h2>Мои смены</h2>
+            <p>Ближайший график и статусы подтверждения</p>
+          </div>
         </div>
-        <div class="wallet">💜</div>
-        <button class="wide-btn" data-tab="salary">💳 Финансы <span>›</span></button>
+        <div id="scheduleContent"></div>
       </section>
 
-      <section class="shift-card">
-        <div class="section-title">Следующая смена</div>
-        <h2 id="nextDate">Нет смен</h2>
-        <div class="shift-meta">
-          <span id="nextTime">🕘 —</span>
-          <span id="nextHours">⏱ 0 часов</span>
-          <span class="status" id="nextStatus">—</span>
+      <section id="salarySection" class="app-section page-card">
+        <div class="page-title">
+          <span>💰</span>
+          <div>
+            <h2>Зарплата</h2>
+            <p>Начисления, ставка и итог к выплате</p>
+          </div>
         </div>
-        <button class="wide-btn green" data-tab="schedule">🗓 Мои смены <span>›</span></button>
+        <div id="salaryContent"></div>
       </section>
 
-      <section class="stats-grid">
-        <div class="stat-card blue">
-          <div class="stat-icon">🕒</div>
-          <p>Всего часов</p>
-          <h3 id="hours">0</h3>
-          <span>подтверждено</span>
+      <section id="finesSection" class="app-section page-card">
+        <div class="page-title">
+          <span>💸</span>
+          <div>
+            <h2>Штрафы</h2>
+            <p>Сумма штрафов и количество записей</p>
+          </div>
         </div>
-        <div class="stat-card gold">
-          <div class="stat-icon">📅</div>
-          <p>Смены</p>
-          <h3 id="confirmedShifts">0</h3>
-          <span>подтверждено</span>
-        </div>
-        <div class="stat-card purple">
-          <div class="stat-icon">💵</div>
-          <p>Ставка</p>
-          <h3 id="rate">0 ₽</h3>
-          <span>в час</span>
-        </div>
+        <div id="finesContent"></div>
       </section>
 
-      <section>
-        <h2 class="block-title">Быстрые действия</h2>
-        <div class="actions-grid">
-          <button data-tab="schedule">📅<span>Мои смены</span></button>
-          <button data-tab="salary">💵<span>Зарплата</span></button>
-          <button data-tab="fines">📄<span>Штрафы</span></button>
-          <button data-tab="stats">📊<span>Статистика</span></button>
+      <section id="statsSection" class="app-section page-card">
+        <div class="page-title">
+          <span>📊</span>
+          <div>
+            <h2>Статистика</h2>
+            <p>Часы, смены и ближайшие выходы</p>
+          </div>
         </div>
+        <div id="statsContent"></div>
       </section>
 
-      <section class="panel" id="detailsPanel">
-        <h2 id="panelTitle">График</h2>
-        <div id="panelContent"></div>
+      <section id="profileSection" class="app-section page-card">
+        <div class="page-title">
+          <span>👤</span>
+          <div>
+            <h2>Профиль</h2>
+            <p>Информация о сотруднике</p>
+          </div>
+        </div>
+        <div id="profileContent"></div>
       </section>
+
+      <section id="adminSection" class="app-section page-card admin-page hidden">
+        <div class="page-title">
+          <span>👑</span>
+          <div>
+            <h2>Админ-панель</h2>
+            <p>Сотрудники, зарплаты, штрафы и смены</p>
+          </div>
+        </div>
+        <div id="adminContent"></div>
+      </section>
+
     </main>
 
-    <nav class="bottom-nav">
-      <button class="active" data-tab="home">🏠<span>Главная</span></button>
-      <button data-tab="schedule">📅<span>График</span></button>
-      <button data-tab="salary">💳<span>Зарплата</span></button>
-      <button data-tab="fines">📄<span>Штрафы</span></button>
-      <button data-tab="profile">👤<span>Профиль</span></button>
+    <nav class="bottom-nav" id="bottomNav">
+      <button class="active" data-scroll="homeSection">🏠<span>Главная</span></button>
+      <button data-scroll="scheduleSection">📅<span>График</span></button>
+      <button data-scroll="salarySection">💳<span>Зарплата</span></button>
+      <button data-scroll="finesSection">📄<span>Штрафы</span></button>
+      <button data-scroll="profileSection">👤<span>Профиль</span></button>
     </nav>
   </div>
 
