@@ -110,6 +110,92 @@ async function loadAdminData() {
   return data;
 }
 
+
+async function apiPost(path, payload) {
+  const response = await fetch(`${API_BASE}${path}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(payload)
+  });
+
+  const data = await response.json();
+
+  if (!response.ok || !data.ok) {
+    throw new Error(data.error || "Ошибка запроса");
+  }
+
+  return data;
+}
+
+function getAdminId() {
+  return getTelegramUserId();
+}
+
+async function adminRemindEmployee(telegramId) {
+  try {
+    const adminId = getAdminId();
+    const data = await apiPost("/api/admin/remind", {
+      admin_id: adminId,
+      telegram_id: telegramId
+    });
+
+    alert(`📣 ${data.message}\n${data.employee}\n${data.date} · ${data.shift}`);
+  } catch (error) {
+    alert("Ошибка: " + error.message);
+  }
+}
+
+async function adminFineEmployee(telegramId) {
+  const amount = prompt("Введите сумму штрафа:");
+  if (!amount) return;
+
+  const reason = prompt("Введите причину штрафа:");
+  if (!reason) return;
+
+  try {
+    const adminId = getAdminId();
+    const data = await apiPost("/api/admin/fine", {
+      admin_id: adminId,
+      telegram_id: telegramId,
+      amount: amount,
+      reason: reason
+    });
+
+    alert(`💸 Штраф выписан\n${data.employee}\n${formatMoney(data.amount)}\n${data.reason}`);
+    await renderEmployeeDetails(telegramId);
+  } catch (error) {
+    alert("Ошибка: " + error.message);
+  }
+}
+
+async function adminAddShiftEmployee(telegramId) {
+  const date = prompt("Введите дату смены в формате ДД.ММ.ГГГГ:");
+  if (!date) return;
+
+  const shift = prompt("Введите время смены. Например: 8-22");
+  if (!shift) return;
+
+  const notify = confirm("Отправить уведомление сотруднику?");
+
+  try {
+    const adminId = getAdminId();
+    const data = await apiPost("/api/admin/add_shift", {
+      admin_id: adminId,
+      telegram_id: telegramId,
+      date: date,
+      shift: shift,
+      notify: notify
+    });
+
+    alert(`➕ Смена добавлена\n${data.employee}\n${data.date} · ${data.shift}\n${data.hours} ч.`);
+    await renderEmployeeDetails(telegramId);
+  } catch (error) {
+    alert("Ошибка: " + error.message);
+  }
+}
+
 function renderAdminPanel(adminData) {
   currentAdminData = adminData;
 
@@ -197,6 +283,21 @@ async function renderEmployeeDetails(telegramId) {
         <div class="muted">${emp.role === "admin" ? "Администратор" : "Сотрудник"}</div>
       </div>
 
+      <h3 class="panel-subtitle">⚡ Быстрые действия</h3>
+      <button class="item" data-admin-action="remind" data-action-employee-id="${emp.telegram_id}">
+        <strong>📣 Напомнить о ближайшей смене</strong>
+        <span class="muted">Отправит сотруднику уведомление в Telegram</span>
+      </button>
+      <button class="item" data-admin-action="fine" data-action-employee-id="${emp.telegram_id}">
+        <strong>💸 Выписать штраф</strong>
+        <span class="muted">Запишет штраф в таблицу fines</span>
+      </button>
+      <button class="item" data-admin-action="add_shift" data-action-employee-id="${emp.telegram_id}">
+        <strong>➕ Добавить смену</strong>
+        <span class="muted">Добавит смену в schedule</span>
+      </button>
+
+      <h3 class="panel-subtitle">📊 Статистика</h3>
       <div class="item"><strong>⏱ Часы</strong>${formatNumber(emp.hours)} ч.</div>
       <div class="item"><strong>✅ Подтверждённые смены</strong>${formatNumber(emp.confirmed_shifts)}</div>
       <div class="item"><strong>📅 Ближайшие смены</strong>${formatNumber(emp.upcoming_shifts_count)}</div>
@@ -299,7 +400,31 @@ function renderPanel(tab) {
   }
 }
 
-document.addEventListener("click", (event) => {
+document.addEventListener("click", async (event) => {
+  const adminActionBtn = event.target.closest("[data-admin-action]");
+  if (adminActionBtn) {
+    if (tg?.HapticFeedback) {
+      tg.HapticFeedback.impactOccurred("medium");
+    }
+
+    const action = adminActionBtn.dataset.adminAction;
+    const telegramId = adminActionBtn.dataset.actionEmployeeId;
+
+    if (action === "remind") {
+      await adminRemindEmployee(telegramId);
+    }
+
+    if (action === "fine") {
+      await adminFineEmployee(telegramId);
+    }
+
+    if (action === "add_shift") {
+      await adminAddShiftEmployee(telegramId);
+    }
+
+    return;
+  }
+
   const employeeCard = event.target.closest("[data-employee-id]");
   if (employeeCard) {
     if (tg?.HapticFeedback) {
