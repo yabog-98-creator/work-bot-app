@@ -87,6 +87,73 @@ function renderHome(data) {
     document.getElementById("nextHours").textContent = "⏱ 0 часов";
     document.getElementById("nextStatus").textContent = "—";
   }
+
+  const actionsGrid = document.querySelector(".actions-grid");
+  if (actionsGrid && data.role === "admin" && !document.getElementById("adminActionBtn")) {
+    actionsGrid.insertAdjacentHTML(
+      "afterbegin",
+      `<button id="adminActionBtn" data-tab="admin">👑<span>Админ</span></button>`
+    );
+  }
+}
+
+async function loadAdminData() {
+  const telegramId = getTelegramUserId();
+  const response = await fetch(`${API_BASE}/api/admin/${telegramId}`);
+  const data = await response.json();
+
+  if (!data.ok) {
+    throw new Error(data.error || "Нет доступа к админ-панели");
+  }
+
+  return data;
+}
+
+function renderAdminPanel(adminData) {
+  const employeesHtml = (adminData.employees || []).map(emp => `
+    <div class="item">
+      <strong>👤 ${emp.employee}</strong>
+      <span class="muted">ID: ${emp.telegram_id}</span>
+      <div class="muted">⏱ ${formatNumber(emp.hours)} ч. · ✅ смен: ${emp.confirmed_shifts} · 📅 впереди: ${emp.upcoming_shifts_count}</div>
+      <div>💰 ${formatMoney(emp.salary_after_fines)} · ставка ${formatMoney(emp.rate)}/час</div>
+    </div>
+  `).join("");
+
+  const finesHtml = (adminData.recent_fines || []).length
+    ? adminData.recent_fines.map(f => `
+      <div class="item">
+        <strong>💸 ${f.employee} · ${formatMoney(f.amount)}</strong>
+        <span class="muted">${f.created_at}</span>
+        <div class="muted">${f.reason || "Без причины"}</div>
+      </div>
+    `).join("")
+    : `<div class="item muted">Штрафов пока нет</div>`;
+
+  const problemsHtml = (adminData.recent_problems || []).length
+    ? adminData.recent_problems.map(p => `
+      <div class="item">
+        <strong>⚠️ ${p.employee} · ${p.shift_date} · ${p.shift}</strong>
+        <span class="muted">${p.created_at}</span>
+        <div class="muted">${p.problem || "Без описания"}</div>
+      </div>
+    `).join("")
+    : `<div class="item muted">Проблемных смен пока нет</div>`;
+
+  return `
+    <div class="item"><strong>👥 Сотрудников</strong>${adminData.employees_count}</div>
+    <div class="item"><strong>⏱ Всего часов</strong>${formatNumber(adminData.total_hours)} ч.</div>
+    <div class="item"><strong>💰 К выплате всего</strong>${formatMoney(adminData.total_after_fines)}</div>
+    <div class="item"><strong>💸 Штрафы всего</strong>${formatMoney(adminData.total_fines)}</div>
+
+    <h3 class="panel-subtitle">👥 Сотрудники</h3>
+    ${employeesHtml || `<div class="item muted">Сотрудников пока нет</div>`}
+
+    <h3 class="panel-subtitle">💸 Последние штрафы</h3>
+    ${finesHtml}
+
+    <h3 class="panel-subtitle">⚠️ Проблемные смены</h3>
+    ${problemsHtml}
+  `;
 }
 
 function renderPanel(tab) {
@@ -100,6 +167,25 @@ function renderPanel(tab) {
   }
 
   panel.classList.add("visible");
+
+  if (tab === "admin") {
+    title.textContent = "👑 Админ-панель";
+    content.innerHTML = `<div class="item muted">Загружаем админ-панель...</div>`;
+
+    if (currentData.role !== "admin") {
+      content.innerHTML = `<div class="item muted">Нет доступа</div>`;
+      return;
+    }
+
+    loadAdminData()
+      .then(adminData => {
+        content.innerHTML = renderAdminPanel(adminData);
+      })
+      .catch(error => {
+        content.innerHTML = `<div class="item muted">Ошибка: ${error.message}</div>`;
+      });
+    return;
+  }
 
   if (tab === "schedule") {
     title.textContent = "📅 Мои смены";
