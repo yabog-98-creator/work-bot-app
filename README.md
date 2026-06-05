@@ -1,8 +1,5 @@
-# ZDRASTE WORK Mini App
+# ZDRASTE WORK Mini App V17
 
-Красивый интерфейс Telegram Mini App для рабочего бота.
+Версия с реальными данными из Railway API.
 
-Файлы:
-- index.html
-- style.css
-- script.js
+API: https://work-bot-production-4b59.up.railway.app/api/user/<telegram_id>
