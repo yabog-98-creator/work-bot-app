@@ -908,3 +908,202 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* =========================
+   V24.3 MOBILE COMPACT FIX
+   Делает таймер компактным на телефоне
+========================= */
+
+.shift-card {
+  padding: 22px !important;
+  overflow: hidden;
+}
+
+.shift-card h2 {
+  font-size: 42px;
+}
+
+.shift-live-timer {
+  width: 100%;
+  max-width: 100%;
+  padding: 16px !important;
+  border-radius: 22px !important;
+  margin-top: 18px !important;
+}
+
+.timer-topline {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 10px !important;
+  margin-bottom: 12px !important;
+}
+
+.timer-title {
+  font-size: 22px !important;
+  line-height: 1.08 !important;
+  max-width: 58%;
+}
+
+.timer-badge {
+  font-size: 13px !important;
+  padding: 8px 12px !important;
+  flex-shrink: 0;
+}
+
+.timer-main-row {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 10px !important;
+}
+
+.timer-ring {
+  display: none !important;
+}
+
+.timer-center {
+  width: 100%;
+}
+
+.timer-subtitle {
+  font-size: 15px !important;
+  margin: 4px 0 8px !important;
+}
+
+.timer-value {
+  font-size: 48px !important;
+  line-height: 1 !important;
+  letter-spacing: -1px !important;
+  white-space: nowrap;
+}
+
+.timer-labels {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  max-width: 100% !important;
+  font-size: 13px !important;
+  color: #c7cbd7 !important;
+}
+
+.timer-info {
+  margin-top: 10px;
+  padding-left: 0 !important;
+  border-left: none !important;
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 10px !important;
+}
+
+.timer-info-line {
+  margin: 0 !important;
+  padding: 10px !important;
+  border-radius: 16px;
+  background: rgba(0,0,0,0.16);
+}
+
+.timer-info-line small {
+  font-size: 12px !important;
+}
+
+.timer-info-line strong {
+  font-size: 17px !important;
+}
+
+.timer-worked {
+  grid-column: 1 / -1 !important;
+  font-size: 15px !important;
+  padding: 9px 10px;
+  border-radius: 999px;
+  background: rgba(49,255,137,0.10);
+  width: fit-content;
+}
+
+.progress-title-row {
+  margin: 14px 0 8px !important;
+  font-size: 15px !important;
+}
+
+.progress-wrap {
+  height: 12px !important;
+}
+
+.progress-meta {
+  font-size: 14px !important;
+}
+
+.next-shift-countdown {
+  padding: 18px !important;
+  border-radius: 24px !important;
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 12px !important;
+}
+
+.next-countdown-title {
+  font-size: 20px !important;
+}
+
+.next-countdown-value {
+  font-size: 40px !important;
+  white-space: nowrap;
+}
+
+.next-countdown-divider {
+  display: none !important;
+}
+
+.next-countdown-right {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 10px !important;
+}
+
+.next-info-line {
+  padding: 10px;
+  border-radius: 16px;
+  background: rgba(0,0,0,0.16);
+}
+
+.next-mini-btn {
+  grid-column: 1 / -1;
+}
+
+.bottom-nav {
+  z-index: 999;
+}
+
+@media (max-width: 390px) {
+  .shift-card {
+    padding: 18px !important;
+  }
+
+  .shift-card h2 {
+    font-size: 36px !important;
+  }
+
+  .timer-title {
+    font-size: 20px !important;
+  }
+
+  .timer-badge {
+    font-size: 12px !important;
+    padding: 7px 10px !important;
+  }
+
+  .timer-value {
+    font-size: 40px !important;
+  }
+
+  .timer-info {
+    grid-template-columns: 1fr !important;
+  }
+
+  .next-countdown-value {
+    font-size: 34px !important;
+  }
+
+  .next-countdown-right {
+    grid-template-columns: 1fr !important;
+  }
+}
