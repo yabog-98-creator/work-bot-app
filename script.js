@@ -63,10 +63,26 @@ async function loadData() {
   }
 }
 
+
+function setUserAvatar(name) {
+  const avatar = document.getElementById("avatar");
+  if (!avatar) return;
+
+  const photoUrl = tg?.initDataUnsafe?.user?.photo_url;
+
+  if (photoUrl) {
+    avatar.innerHTML = `<img src="${photoUrl}" alt="avatar">`;
+    avatar.classList.add("has-photo");
+  } else {
+    avatar.textContent = name[0]?.toUpperCase() || "A";
+    avatar.classList.remove("has-photo");
+  }
+}
+
 function renderHome(data) {
   const name = data.employee || "Сотрудник";
   document.getElementById("hello").textContent = `Привет, ${name}! 👋`;
-  document.getElementById("avatar").textContent = name[0]?.toUpperCase() || "A";
+  setUserAvatar(name);
   document.getElementById("roleText").textContent = data.role === "admin" ? "Панель администратора" : "Рады видеть тебя снова";
 
   document.getElementById("salaryAfterFines").textContent = formatMoney(data.salary_after_fines);
@@ -197,6 +213,82 @@ async function adminAddShiftEmployee(telegramId) {
   }
 }
 
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function normalizeShiftText(value) {
+  return String(value || "—").replace(/[–—]/g, "-").replace("-", " — ");
+}
+
+function getShiftDayLabel(dateText) {
+  const date = parseShiftDate(dateText);
+  if (!date) return "Смена";
+  const days = ["ВС", "ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ"];
+  const months = ["ЯНВАРЯ", "ФЕВРАЛЯ", "МАРТА", "АПРЕЛЯ", "МАЯ", "ИЮНЯ", "ИЮЛЯ", "АВГУСТА", "СЕНТЯБРЯ", "ОКТЯБРЯ", "НОЯБРЯ", "ДЕКАБРЯ"];
+  return `${days[date.getDay()]} • ${pad2(date.getDate())} ${months[date.getMonth()]}`;
+}
+
+function getCurrentShiftForDashboard(data) {
+  const relevant = findRelevantShift(data);
+  return relevant?.type === "current" ? relevant.item : null;
+}
+
+function getDashboardGreeting() {
+  const hour = new Date().getHours();
+  if (hour >= 5 && hour < 12) return "Доброе утро";
+  if (hour >= 12 && hour < 18) return "Добрый день";
+  if (hour >= 18 && hour < 23) return "Добрый вечер";
+  return "Доброй ночи";
+}
+
+function metricCard(icon, label, value, tone = "") {
+  return `
+    <div class="v27-metric ${tone}">
+      <div class="v27-metric-icon">${icon}</div>
+      <div class="v27-metric-label">${label}</div>
+      <div class="v27-metric-value">${value}</div>
+    </div>
+  `;
+}
+
+function renderShiftCardV27(s, index = 0) {
+  const confirmed = !!s.confirmed;
+  const statusClass = confirmed ? "confirmed" : "waiting";
+  const statusText = confirmed ? "Подтверждена" : "Ожидает";
+  const dayLabel = getShiftDayLabel(s.date);
+  const isFirst = index === 0;
+
+  return `
+    <div class="v27-shift-card ${statusClass} ${isFirst ? "featured" : ""}">
+      <div class="v27-shift-top">
+        <div>
+          <div class="v27-kicker">${isFirst ? "Ближайшая смена" : dayLabel}</div>
+          <div class="v27-shift-date">${escapeHtml(s.date)}</div>
+        </div>
+        <div class="v27-status ${statusClass}">${confirmed ? "✅" : "⏳"} ${statusText}</div>
+      </div>
+
+      <div class="v27-shift-time">${escapeHtml(normalizeShiftText(s.shift))}</div>
+
+      <div class="v27-shift-bottom">
+        <span>⏱ ${formatNumber(s.hours)} ч.</span>
+        <span>${dayLabel}</span>
+      </div>
+
+      <div class="v27-line-progress">
+        <div style="width:${confirmed ? "100" : "18"}%"></div>
+      </div>
+    </div>
+  `;
+}
+
 function itemHtml(title, value, muted = "") {
   return `
     <div class="item">
@@ -211,29 +303,59 @@ function renderScheduleSection(data) {
   const box = document.getElementById("scheduleContent");
   if (!box) return;
 
-  if (!data.upcoming_shifts?.length) {
-    box.innerHTML = `<div class="item muted">Ближайших смен нет</div>`;
+  const shifts = Array.isArray(data.upcoming_shifts) ? data.upcoming_shifts : [];
+
+  if (!shifts.length) {
+    box.innerHTML = `
+      <div class="v27-empty-card">
+        <div class="v27-empty-icon">📅</div>
+        <h3>Смен пока нет</h3>
+        <p>Как только администратор назначит смену, она появится здесь.</p>
+      </div>
+    `;
     return;
   }
 
-  box.innerHTML = data.upcoming_shifts.map(s => `
-    <div class="item">
-      <strong>${s.date} · ${s.shift}</strong>
-      <div class="muted">⏱ ${s.hours} ч. · ${s.confirmed ? "✅ Подтверждена" : "⏳ Ожидает"}</div>
+  box.innerHTML = `
+    <div class="v27-section-toolbar">
+      <button class="active">Предстоящие</button>
+      <button>Подтверждения</button>
     </div>
-  `).join("");
+    <div class="v27-shifts-list">
+      ${shifts.map((s, index) => renderShiftCardV27(s, index)).join("")}
+    </div>
+  `;
 }
 
 function renderSalarySection(data) {
   const box = document.getElementById("salaryContent");
   if (!box) return;
 
+  const salary = Number(data.salary || 0);
+  const fines = Number(data.fines_total || 0);
+  const after = Number(data.salary_after_fines || 0);
+  const percent = salary > 0 ? Math.max(0, Math.min(100, Math.round((after / salary) * 100))) : 0;
+
   box.innerHTML = `
-    ${itemHtml("✅ К выплате", formatMoney(data.salary_after_fines))}
-    ${itemHtml("💰 Начислено", formatMoney(data.salary))}
-    ${itemHtml("💵 Ставка", `${formatMoney(data.rate)} / час`)}
-    ${itemHtml("⏱ Отработано", `${formatNumber(data.hours)} ч.`)}
-    ${itemHtml("💸 Штрафы", formatMoney(data.fines_total))}
+    <div class="v27-finance-hero">
+      <div>
+        <div class="v27-kicker">К выплате</div>
+        <div class="v27-big-money">${formatMoney(after)}</div>
+      </div>
+      <div class="v27-wallet-icon">💳</div>
+      <div class="v27-money-progress"><div style="width:${percent}%"></div></div>
+      <div class="v27-money-row">
+        <span>После штрафов</span>
+        <strong>${percent}%</strong>
+      </div>
+    </div>
+
+    <div class="v27-finance-grid">
+      ${metricCard("💼", "Начислено", formatMoney(salary), "green")}
+      ${metricCard("🛡️", "Штрафы", formatMoney(fines), "red")}
+      ${metricCard("💵", "Ставка", `${formatMoney(data.rate)} / ч`, "purple")}
+      ${metricCard("⏱", "Отработано", `${formatNumber(data.hours)} ч.`, "blue")}
+    </div>
   `;
 }
 
@@ -241,9 +363,33 @@ function renderFinesSection(data) {
   const box = document.getElementById("finesContent");
   if (!box) return;
 
+  const finesTotal = Number(data.fines_total || 0);
+  const finesCount = Number(data.fines_count || 0);
+
+  if (!finesTotal && !finesCount) {
+    box.innerHTML = `
+      <div class="v27-success-card">
+        <div class="v27-success-orb">✅</div>
+        <h3>Отлично!</h3>
+        <p>У вас нет штрафов. Продолжайте в том же духе 💪</p>
+        <div class="v27-good-pill">Без нарушений</div>
+      </div>
+    `;
+    return;
+  }
+
   box.innerHTML = `
-    ${itemHtml("💸 Всего штрафов", formatMoney(data.fines_total))}
-    ${itemHtml("📄 Количество", formatNumber(data.fines_count))}
+    <div class="v27-fines-summary">
+      <div>
+        <div class="v27-kicker">Всего штрафов</div>
+        <div class="v27-fine-money">${formatMoney(finesTotal)}</div>
+      </div>
+      <div class="v27-fine-count">${formatNumber(finesCount)} записей</div>
+    </div>
+    <div class="v27-info-card">
+      <strong>История штрафов</strong>
+      <p>Подробные штрафы хранятся в таблице. Здесь показана общая сумма по сотруднику.</p>
+    </div>
   `;
 }
 
@@ -252,10 +398,12 @@ function renderStatsSection(data) {
   if (!box) return;
 
   box.innerHTML = `
-    ${itemHtml("✅ Подтверждённые смены", formatNumber(data.confirmed_shifts))}
-    ${itemHtml("📅 Ближайшие смены", formatNumber(data.upcoming_shifts_count))}
-    ${itemHtml("⏱ Часы", `${formatNumber(data.hours)} ч.`)}
-    ${itemHtml("💵 Ставка", `${formatMoney(data.rate)} / час`)}
+    <div class="v27-finance-grid">
+      ${metricCard("✅", "Подтверждённые смены", formatNumber(data.confirmed_shifts), "green")}
+      ${metricCard("📅", "Ближайшие смены", formatNumber(data.upcoming_shifts_count), "purple")}
+      ${metricCard("⏱", "Часы", `${formatNumber(data.hours)} ч.`, "blue")}
+      ${metricCard("💵", "Ставка", `${formatMoney(data.rate)} / ч`, "gold")}
+    </div>
   `;
 }
 
@@ -263,9 +411,24 @@ function renderProfileSection(data) {
   const box = document.getElementById("profileContent");
   if (!box) return;
 
+  const name = data.employee || "Сотрудник";
+  const role = data.role === "admin" ? "Администратор" : "Сотрудник";
+  const initial = name[0]?.toUpperCase() || "A";
+
   box.innerHTML = `
-    ${itemHtml(`👤 ${data.employee}`, `ID: ${data.telegram_id}`)}
-    ${itemHtml("Роль", data.role === "admin" ? "Администратор" : "Сотрудник")}
+    <div class="v27-profile-hero">
+      <div class="v27-profile-avatar">${escapeHtml(initial)}</div>
+      <h3>${escapeHtml(name)}</h3>
+      <div class="v27-role-pill">⭐ ${role}</div>
+      <div class="v27-profile-id">Telegram ID: ${escapeHtml(data.telegram_id)}</div>
+    </div>
+
+    <div class="v27-profile-grid">
+      ${metricCard("📅", "Смены", formatNumber(data.confirmed_shifts), "purple")}
+      ${metricCard("⏱", "Часы", formatNumber(data.hours), "blue")}
+      ${metricCard("💰", "Доход", formatMoney(data.salary_after_fines), "green")}
+      ${metricCard("💵", "Ставка", `${formatMoney(data.rate)} / ч`, "gold")}
+    </div>
   `;
 }
 
@@ -326,7 +489,7 @@ async function renderAdminSection() {
 function renderHome(data) {
   const name = data.employee || "Сотрудник";
   document.getElementById("hello").textContent = `Привет, ${name}! 👋`;
-  document.getElementById("avatar").textContent = name[0]?.toUpperCase() || "A";
+  setUserAvatar(name);
   document.getElementById("roleText").textContent = data.role === "admin" ? "Панель администратора" : "Рады видеть тебя снова";
 
   document.getElementById("salaryAfterFines").textContent = formatMoney(data.salary_after_fines);
@@ -357,44 +520,53 @@ function renderAdminPanel(adminData) {
   currentAdminData = adminData;
 
   const employeesHtml = (adminData.employees || []).map(emp => `
-    <button class="item employee-card" data-employee-id="${emp.telegram_id}">
-      <strong>👤 ${emp.employee}</strong>
-      <span class="muted">ID: ${emp.telegram_id}</span>
-      <div class="muted">⏱ ${formatNumber(emp.hours)} ч. · ✅ смен: ${emp.confirmed_shifts} · 📅 впереди: ${emp.upcoming_shifts_count}</div>
-      <div>💰 ${formatMoney(emp.salary_after_fines)} · ставка ${formatMoney(emp.rate)}/час</div>
-      <div class="muted">Нажми, чтобы открыть карточку сотрудника →</div>
+    <button class="v27-employee-card" data-employee-id="${emp.telegram_id}">
+      <div class="v27-employee-avatar">${escapeHtml((emp.employee || "С")[0])}</div>
+      <div class="v27-employee-info">
+        <strong>${escapeHtml(emp.employee)}</strong>
+        <span>ID: ${escapeHtml(emp.telegram_id)}</span>
+        <div class="v27-employee-line">
+          <b>⏱ ${formatNumber(emp.hours)} ч.</b>
+          <b>✅ ${formatNumber(emp.confirmed_shifts)}</b>
+          <b>📅 ${formatNumber(emp.upcoming_shifts_count)}</b>
+        </div>
+      </div>
+      <div class="v27-employee-money">${formatMoney(emp.salary_after_fines)}</div>
     </button>
   `).join("");
 
   const finesHtml = (adminData.recent_fines || []).length
     ? adminData.recent_fines.map(f => `
-      <div class="item">
-        <strong>💸 ${f.employee} · ${formatMoney(f.amount)}</strong>
-        <span class="muted">${f.created_at}</span>
-        <div class="muted">${f.reason || "Без причины"}</div>
+      <div class="v27-admin-log red">
+        <strong>💸 ${escapeHtml(f.employee)} · ${formatMoney(f.amount)}</strong>
+        <span>${escapeHtml(f.created_at)}</span>
+        <p>${escapeHtml(f.reason || "Без причины")}</p>
       </div>
     `).join("")
-    : `<div class="item muted">Штрафов пока нет</div>`;
+    : `<div class="v27-info-card"><strong>Штрафов пока нет</strong><p>Последние штрафы появятся здесь.</p></div>`;
 
   const problemsHtml = (adminData.recent_problems || []).length
     ? adminData.recent_problems.map(p => `
-      <div class="item">
-        <strong>⚠️ ${p.employee} · ${p.shift_date} · ${p.shift}</strong>
-        <span class="muted">${p.created_at}</span>
-        <div class="muted">${p.problem || "Без описания"}</div>
+      <div class="v27-admin-log warn">
+        <strong>⚠️ ${escapeHtml(p.employee)} · ${escapeHtml(p.shift_date)} · ${escapeHtml(p.shift)}</strong>
+        <span>${escapeHtml(p.created_at)}</span>
+        <p>${escapeHtml(p.problem || "Без описания")}</p>
       </div>
     `).join("")
-    : `<div class="item muted">Проблемных смен пока нет</div>`;
+    : `<div class="v27-info-card"><strong>Проблемных смен пока нет</strong><p>Заявки сотрудников появятся здесь.</p></div>`;
 
   return `
-    <div class="admin-summary">
-      <div class="mini-stat"><span>👥</span><strong>${adminData.employees_count}</strong><small>сотрудников</small></div>
-      <div class="mini-stat"><span>⏱</span><strong>${formatNumber(adminData.total_hours)}</strong><small>часов</small></div>
-      <div class="mini-stat"><span>💰</span><strong>${formatMoney(adminData.total_after_fines)}</strong><small>к выплате</small></div>
+    <div class="v27-admin-grid">
+      ${metricCard("👥", "Сотрудников", formatNumber(adminData.employees_count), "purple")}
+      ${metricCard("⏱", "Часов", formatNumber(adminData.total_hours), "blue")}
+      ${metricCard("💰", "К выплате", formatMoney(adminData.total_after_fines), "green")}
+      ${metricCard("👑", "Админ", "CRM", "gold")}
     </div>
 
     <h3 class="panel-subtitle">👥 Сотрудники</h3>
-    ${employeesHtml || `<div class="item muted">Сотрудников пока нет</div>`}
+    <div class="v27-employee-list">
+      ${employeesHtml || `<div class="v27-info-card"><strong>Сотрудников пока нет</strong></div>`}
+    </div>
 
     <h3 class="panel-subtitle">💸 Последние штрафы</h3>
     ${finesHtml}
@@ -404,11 +576,11 @@ function renderAdminPanel(adminData) {
   `;
 }
 
-async function renderEmployeeDetails(telegramId) {
+async async function renderEmployeeDetails(telegramId) {
   const adminBox = document.getElementById("adminContent");
   if (!adminBox) return;
 
-  adminBox.innerHTML = `<div class="item muted">Загружаем карточку сотрудника...</div>`;
+  adminBox.innerHTML = `<div class="v27-info-card">Загружаем карточку сотрудника...</div>`;
   scrollToSection("adminSection");
 
   try {
@@ -419,58 +591,46 @@ async function renderEmployeeDetails(telegramId) {
       throw new Error(emp.error || "Сотрудник не найден");
     }
 
+    const name = emp.employee || "Сотрудник";
+    const initial = name[0]?.toUpperCase() || "A";
+
     const shiftsHtml = (emp.upcoming_shifts || []).length
-      ? emp.upcoming_shifts.map(s => `
-        <div class="item">
-          <strong>📅 ${s.date} · ${s.shift}</strong>
-          <div class="muted">⏱ ${s.hours} ч. · ${s.confirmed ? "✅ Подтверждена" : "⏳ Ожидает"}</div>
-        </div>
-      `).join("")
-      : `<div class="item muted">Ближайших смен нет</div>`;
+      ? emp.upcoming_shifts.map((s, index) => renderShiftCardV27(s, index)).join("")
+      : `<div class="v27-info-card"><strong>Ближайших смен нет</strong></div>`;
 
     adminBox.innerHTML = `
-      <button class="item" data-admin-back="true">
-        <strong>⬅️ Назад к админ-панели</strong>
-      </button>
+      <button class="v27-back-btn" data-admin-back="true">⬅️ Назад к админ-панели</button>
 
-      <div class="item employee-head">
-        <strong>👤 ${emp.employee}</strong>
-        <span class="muted">ID: ${emp.telegram_id}</span>
-        <div class="muted">${emp.role === "admin" ? "Администратор" : "Сотрудник"}</div>
+      <div class="v27-profile-hero">
+        <div class="v27-profile-avatar">${escapeHtml(initial)}</div>
+        <h3>${escapeHtml(name)}</h3>
+        <div class="v27-role-pill">${emp.role === "admin" ? "👑 Администратор" : "⭐ Сотрудник"}</div>
+        <div class="v27-profile-id">ID: ${escapeHtml(emp.telegram_id)}</div>
       </div>
 
-      <h3 class="panel-subtitle">⚡ Быстрые действия</h3>
-      <button class="item action-item" data-admin-action="remind" data-action-employee-id="${emp.telegram_id}">
-        <strong>📣 Напомнить о ближайшей смене</strong>
-        <span class="muted">Отправит сотруднику уведомление в Telegram</span>
-      </button>
-      <button class="item action-item" data-admin-action="fine" data-action-employee-id="${emp.telegram_id}">
-        <strong>💸 Выписать штраф</strong>
-        <span class="muted">Запишет штраф в таблицу fines</span>
-      </button>
-      <button class="item action-item" data-admin-action="add_shift" data-action-employee-id="${emp.telegram_id}">
-        <strong>➕ Добавить смену</strong>
-        <span class="muted">Добавит смену в schedule</span>
-      </button>
+      <div class="v27-action-grid">
+        <button data-admin-action="remind" data-action-employee-id="${emp.telegram_id}">📣<span>Напомнить</span></button>
+        <button data-admin-action="fine" data-action-employee-id="${emp.telegram_id}">💸<span>Штраф</span></button>
+        <button data-admin-action="add_shift" data-action-employee-id="${emp.telegram_id}">➕<span>Смена</span></button>
+      </div>
 
-      <h3 class="panel-subtitle">📊 Статистика</h3>
-      ${itemHtml("⏱ Часы", `${formatNumber(emp.hours)} ч.`)}
-      ${itemHtml("✅ Подтверждённые смены", formatNumber(emp.confirmed_shifts))}
-      ${itemHtml("📅 Ближайшие смены", formatNumber(emp.upcoming_shifts_count))}
-      ${itemHtml("💵 Ставка", `${formatMoney(emp.rate)} / час`)}
-      ${itemHtml("💰 Начислено", formatMoney(emp.salary))}
-      ${itemHtml("💸 Штрафы", formatMoney(emp.fines_total))}
-      ${itemHtml("✅ К выплате", formatMoney(emp.salary_after_fines))}
+      <div class="v27-finance-grid">
+        ${metricCard("⏱", "Часы", `${formatNumber(emp.hours)} ч.`, "blue")}
+        ${metricCard("✅", "Смены", formatNumber(emp.confirmed_shifts), "green")}
+        ${metricCard("📅", "Впереди", formatNumber(emp.upcoming_shifts_count), "purple")}
+        ${metricCard("💵", "Ставка", `${formatMoney(emp.rate)} / ч`, "gold")}
+        ${metricCard("💰", "Начислено", formatMoney(emp.salary), "green")}
+        ${metricCard("💸", "Штрафы", formatMoney(emp.fines_total), "red")}
+        ${metricCard("✅", "К выплате", formatMoney(emp.salary_after_fines), "purple")}
+      </div>
 
       <h3 class="panel-subtitle">📅 Ближайшие смены</h3>
-      ${shiftsHtml}
+      <div class="v27-shifts-list">${shiftsHtml}</div>
     `;
   } catch (error) {
     adminBox.innerHTML = `
-      <button class="item" data-admin-back="true">
-        <strong>⬅️ Назад к админ-панели</strong>
-      </button>
-      <div class="item muted">Ошибка: ${error.message}</div>
+      <button class="v27-back-btn" data-admin-back="true">⬅️ Назад к админ-панели</button>
+      <div class="v27-info-card">Ошибка: ${escapeHtml(error.message)}</div>
     `;
   }
 }
