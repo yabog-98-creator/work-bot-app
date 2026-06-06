@@ -576,7 +576,7 @@ function renderAdminPanel(adminData) {
   `;
 }
 
-async async function renderEmployeeDetails(telegramId) {
+async function renderEmployeeDetails(telegramId) {
   const adminBox = document.getElementById("adminContent");
   if (!adminBox) return;
 
@@ -983,3 +983,4 @@ function startShiftTimer() {
 }
 
 loadData();
+
