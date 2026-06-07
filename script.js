@@ -2,6 +2,7 @@ const API_BASE = "https://work-bot-production-4b59.up.railway.app";
 const tg = window.Telegram?.WebApp;
 let currentData = null;
 let currentAdminData = null;
+let currentOwnerData = null;
 
 function formatMoney(value) {
   const num = Number(value || 0);
@@ -83,7 +84,9 @@ function renderHome(data) {
   const name = data.employee || "Сотрудник";
   document.getElementById("hello").textContent = `Привет, ${name}! 👋`;
   setUserAvatar(name);
-  document.getElementById("roleText").textContent = data.role === "admin" ? "Панель администратора" : "Рады видеть тебя снова";
+  document.getElementById("roleText").textContent =
+    data.role === "owner" ? "Панель собственника" :
+    (data.role === "admin" ? "Панель администратора" : "Рады видеть тебя снова");
 
   document.getElementById("salaryAfterFines").textContent = formatMoney(data.salary_after_fines);
   document.getElementById("salary").textContent = formatMoney(data.salary);
@@ -107,10 +110,18 @@ function renderHome(data) {
   }
 
   const actionsGrid = document.querySelector(".actions-grid");
-  if (actionsGrid && data.role === "admin" && !document.getElementById("adminActionBtn")) {
+
+  if (actionsGrid && data.role === "owner" && !document.getElementById("ownerActionBtn")) {
     actionsGrid.insertAdjacentHTML(
       "afterbegin",
-      `<button id="adminActionBtn" data-tab="admin">👑<span>Админ</span></button>`
+      `<button id="ownerActionBtn" data-scroll="ownerSection">🏢<span>Бизнес</span></button>`
+    );
+  }
+
+  if (actionsGrid && (data.role === "admin" || data.role === "owner") && !document.getElementById("adminActionBtn")) {
+    actionsGrid.insertAdjacentHTML(
+      "afterbegin",
+      `<button id="adminActionBtn" data-scroll="adminSection">👑<span>Админ</span></button>`
     );
   }
 }
@@ -125,6 +136,30 @@ async function loadAdminData() {
   }
 
   return data;
+}
+
+
+
+
+async function loadOwnerData() {
+  const telegramId = getTelegramUserId();
+  const response = await fetch(`${API_BASE}/api/owner/${telegramId}`);
+  const data = await response.json();
+
+  if (!data.ok) {
+    throw new Error(data.error || "Нет доступа к бизнес-панели");
+  }
+
+  currentOwnerData = data;
+  return data;
+}
+
+function hasOwnerAccess() {
+  return currentData && (currentData.role === "owner" || currentData.role === "admin");
+}
+
+function isOwnerRole() {
+  return currentData && currentData.role === "owner";
 }
 
 
@@ -439,7 +474,7 @@ function renderAllSections(data) {
   renderStatsSection(data);
   renderProfileSection(data);
 
-  if (data.role === "admin") {
+  if (data.role === "admin" || data.role === "owner") {
     setupAdminAccess();
   }
 }
@@ -448,9 +483,21 @@ function setupAdminAccess() {
   const actionsGrid = document.getElementById("actionsGrid");
   const bottomNav = document.getElementById("bottomNav");
   const adminSection = document.getElementById("adminSection");
+  const ownerSection = document.getElementById("ownerSection");
 
   if (adminSection) {
     adminSection.classList.remove("hidden");
+  }
+
+  if (ownerSection && currentData?.role === "owner") {
+    ownerSection.classList.remove("hidden");
+  }
+
+  if (actionsGrid && currentData?.role === "owner" && !document.getElementById("ownerActionBtn")) {
+    actionsGrid.insertAdjacentHTML(
+      "afterbegin",
+      `<button id="ownerActionBtn" data-scroll="ownerSection">🏢<span>Бизнес</span></button>`
+    );
   }
 
   if (actionsGrid && !document.getElementById("adminActionBtn")) {
@@ -458,6 +505,14 @@ function setupAdminAccess() {
       "afterbegin",
       `<button id="adminActionBtn" data-scroll="adminSection">👑<span>Админ</span></button>`
     );
+  }
+
+  if (bottomNav && currentData?.role === "owner" && !document.getElementById("ownerNavBtn")) {
+    bottomNav.insertAdjacentHTML(
+      "beforeend",
+      `<button id="ownerNavBtn" data-scroll="ownerSection">🏢<span>Бизнес</span></button>`
+    );
+    bottomNav.classList.add("owner-nav");
   }
 
   if (bottomNav && !document.getElementById("adminNavBtn")) {
@@ -468,8 +523,109 @@ function setupAdminAccess() {
     bottomNav.classList.add("admin-nav");
   }
 
+  if (currentData?.role === "owner") {
+    renderOwnerSection();
+  }
+
   renderAdminSection();
 }
+
+
+
+function renderOwnerPanel(ownerData) {
+  const shifts = ownerData.tomorrow_shifts || [];
+  const confirmed = shifts.filter(s => s.confirmed);
+  const waiting = shifts.filter(s => !s.confirmed);
+
+  const confirmedHtml = confirmed.length
+    ? confirmed.map(s => `
+      <div class="owner-shift-row confirmed">
+        <div>
+          <strong>✅ ${escapeHtml(s.employee)}</strong>
+          <span>${escapeHtml(s.shift)} · ${formatNumber(s.hours)} ч.</span>
+        </div>
+        <b>${formatMoney(s.estimated_pay)}</b>
+      </div>
+    `).join("")
+    : `<div class="owner-empty-line">Пока никто не подтвердил смену</div>`;
+
+  const waitingHtml = waiting.length
+    ? waiting.map(s => `
+      <div class="owner-shift-row waiting">
+        <div>
+          <strong>⏳ ${escapeHtml(s.employee)}</strong>
+          <span>${escapeHtml(s.shift)} · ожидает подтверждения</span>
+        </div>
+        <b>${formatMoney(s.estimated_pay)}</b>
+      </div>
+    `).join("")
+    : `<div class="owner-empty-line">Все смены подтверждены</div>`;
+
+  return `
+    <div class="owner-hero">
+      <div class="owner-hero-top">
+        <div>
+          <div class="v27-kicker">ZDRASTE WORK</div>
+          <h3>Бизнес-панель</h3>
+          <p>Сводка на завтра · ${escapeHtml(ownerData.date)}</p>
+        </div>
+        <div class="owner-crown">🏢</div>
+      </div>
+
+      <div class="owner-progress-title">
+        <span>Подтверждение смен</span>
+        <strong>${formatNumber(ownerData.confirm_percent)}%</strong>
+      </div>
+      <div class="owner-progress">
+        <div style="width:${ownerData.confirm_percent}%"></div>
+      </div>
+      <div class="owner-progress-foot">
+        ${formatNumber(ownerData.confirmed_count)} из ${formatNumber(ownerData.tomorrow_shifts_count)} подтвердили
+      </div>
+    </div>
+
+    <div class="owner-kpi-grid">
+      ${metricCard("👥", "Сотрудников", formatNumber(ownerData.employees_count), "purple")}
+      ${metricCard("📅", "Смен завтра", formatNumber(ownerData.tomorrow_shifts_count), "blue")}
+      ${metricCard("✅", "Подтвердили", formatNumber(ownerData.confirmed_count), "green")}
+      ${metricCard("⏳", "Ожидают", formatNumber(ownerData.waiting_count), "gold")}
+    </div>
+
+    <div class="owner-money-card">
+      <div>
+        <div class="v27-kicker">Примерный фонд оплаты завтра</div>
+        <strong>${formatMoney(ownerData.payroll_estimate)}</strong>
+        <span>Всего часов: ${formatNumber(ownerData.total_hours)} ч.</span>
+      </div>
+      <div>💰</div>
+    </div>
+
+    <h3 class="panel-subtitle">✅ Подтвердили</h3>
+    <div class="owner-list">${confirmedHtml}</div>
+
+    <h3 class="panel-subtitle">⏳ Не подтвердили</h3>
+    <div class="owner-list">${waitingHtml}</div>
+
+    <button class="owner-admin-btn" data-scroll="adminSection">
+      👑 Перейти в админ-панель
+    </button>
+  `;
+}
+
+async function renderOwnerSection() {
+  const box = document.getElementById("ownerContent");
+  if (!box) return;
+
+  box.innerHTML = `<div class="v27-info-card">Загружаем бизнес-панель...</div>`;
+
+  try {
+    const ownerData = await loadOwnerData();
+    box.innerHTML = renderOwnerPanel(ownerData);
+  } catch (error) {
+    box.innerHTML = `<div class="v27-info-card">Ошибка: ${escapeHtml(error.message)}</div>`;
+  }
+}
+
 
 async function renderAdminSection() {
   const box = document.getElementById("adminContent");
@@ -490,7 +646,9 @@ function renderHome(data) {
   const name = data.employee || "Сотрудник";
   document.getElementById("hello").textContent = `Привет, ${name}! 👋`;
   setUserAvatar(name);
-  document.getElementById("roleText").textContent = data.role === "admin" ? "Панель администратора" : "Рады видеть тебя снова";
+  document.getElementById("roleText").textContent =
+    data.role === "owner" ? "Панель собственника" :
+    (data.role === "admin" ? "Панель администратора" : "Рады видеть тебя снова");
 
   document.getElementById("salaryAfterFines").textContent = formatMoney(data.salary_after_fines);
   document.getElementById("salary").textContent = formatMoney(data.salary);
@@ -656,6 +814,7 @@ function updateActiveNavOnScroll() {
     "salarySection",
     "finesSection",
     "profileSection",
+    "ownerSection",
     "adminSection"
   ];
 
