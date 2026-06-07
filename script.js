@@ -55,6 +55,10 @@ async function loadData() {
 
     currentData = data;
     renderHome(data);
+    updateRoleVisibility();
+    if (data.role === "owner") {
+      try { await renderOwnerDashboard(); } catch (e) { console.warn(e); }
+    }
     startShiftTimer();
 
     document.getElementById("loading").classList.add("hidden");
@@ -123,6 +127,31 @@ function renderHome(data) {
       "afterbegin",
       `<button id="adminActionBtn" data-scroll="adminSection">👑<span>Админ</span></button>`
     );
+  }
+}
+
+
+function updateRoleVisibility() {
+  const isOwner = currentData && currentData.role === "owner";
+  const hasAdmin = currentData && (currentData.role === "admin" || currentData.role === "owner");
+
+  document.querySelectorAll(".owner-nav").forEach(el => {
+    el.classList.toggle("hidden", !isOwner);
+  });
+
+  const ownerSection = document.getElementById("ownerSection");
+  if (ownerSection) {
+    ownerSection.classList.toggle("hidden", !isOwner);
+  }
+
+  const adminSection = document.getElementById("adminSection");
+  if (adminSection) {
+    adminSection.classList.toggle("hidden", !hasAdmin);
+  }
+
+  const bottomNav = document.getElementById("bottomNav");
+  if (bottomNav && isOwner) {
+    bottomNav.classList.add("owner-mode");
   }
 }
 
@@ -447,7 +476,7 @@ function renderProfileSection(data) {
   if (!box) return;
 
   const name = data.employee || "Сотрудник";
-  const role = data.role === "admin" ? "Администратор" : "Сотрудник";
+  const role = data.role === "owner" ? "Собственник" : (data.role === "admin" ? "Администратор" : "Сотрудник");
   const initial = name[0]?.toUpperCase() || "A";
 
   box.innerHTML = `
@@ -467,12 +496,101 @@ function renderProfileSection(data) {
   `;
 }
 
+
+function renderOwnerShiftLine(shift) {
+  const confirmed = !!shift.confirmed;
+  const status = confirmed ? "✅" : "⏳";
+  const statusText = confirmed ? "Подтверждена" : "Ожидает";
+  const tone = confirmed ? "confirmed" : "waiting";
+
+  return `
+    <div class="v28-owner-shift ${tone}">
+      <div class="v28-owner-shift-left">
+        <div class="v28-owner-status">${status}</div>
+        <div>
+          <strong>${escapeHtml(shift.employee || "Сотрудник")}</strong>
+          <span>${escapeHtml(shift.shift || "—")} · ${formatNumber(shift.hours || 0)} ч.</span>
+        </div>
+      </div>
+      <div class="v28-owner-pill ${tone}">${statusText}</div>
+    </div>
+  `;
+}
+
+function renderOwnerContent(data) {
+  const box = document.getElementById("ownerContent");
+  if (!box) return;
+
+  const shifts = Array.isArray(data.tomorrow_shifts) ? data.tomorrow_shifts : [];
+  const confirmed = shifts.filter(s => s.confirmed);
+  const waiting = shifts.filter(s => !s.confirmed);
+
+  box.innerHTML = `
+    <div class="v28-owner-hero">
+      <div class="v27-kicker">ZDRASTE WORK · BUSINESS</div>
+      <h3>Завтра под контролем</h3>
+      <p>${escapeHtml(data.date || "—")} · ${formatNumber(data.confirmed_count)} из ${formatNumber(data.tomorrow_shifts_count)} подтвердили</p>
+
+      <div class="v28-owner-progress">
+        <div style="width:${Number(data.confirm_percent || 0)}%"></div>
+      </div>
+
+      <div class="v28-owner-progress-row">
+        <span>Подтверждение</span>
+        <strong>${formatNumber(data.confirm_percent)}%</strong>
+      </div>
+    </div>
+
+    <div class="v27-admin-grid">
+      ${metricCard("👥", "Сотрудников", formatNumber(data.employees_count), "purple")}
+      ${metricCard("📅", "Смен завтра", formatNumber(data.tomorrow_shifts_count), "blue")}
+      ${metricCard("✅", "Подтвердили", formatNumber(data.confirmed_count), "green")}
+      ${metricCard("⏳", "Ожидают", formatNumber(data.waiting_count), "gold")}
+    </div>
+
+    <div class="v28-owner-money">
+      <div>
+        <div class="v27-kicker">Фонд оплаты завтра</div>
+        <div class="v28-owner-money-value">${formatMoney(data.payroll_estimate)}</div>
+      </div>
+      <div class="v28-owner-money-icon">💼</div>
+      <div class="v28-owner-money-meta">
+        <span>Всего часов</span>
+        <strong>${formatNumber(data.total_hours)} ч.</strong>
+      </div>
+    </div>
+
+    <div class="v28-owner-actions">
+      <button data-scroll="adminSection">👑<span>Админка</span></button>
+      <button data-owner-refresh="true">🔄<span>Обновить</span></button>
+    </div>
+
+    <h3 class="panel-subtitle">✅ Подтвердили</h3>
+    <div class="v28-owner-list">
+      ${confirmed.length ? confirmed.map(renderOwnerShiftLine).join("") : `<div class="v27-info-card"><strong>Пока никто не подтвердил</strong><p>После подтверждения сотрудники появятся здесь.</p></div>`}
+    </div>
+
+    <h3 class="panel-subtitle">⏳ Ожидают подтверждения</h3>
+    <div class="v28-owner-list">
+      ${waiting.length ? waiting.map(renderOwnerShiftLine).join("") : `<div class="v27-info-card"><strong>Все подтвердили</strong><p>Отлично, завтрашний день закрыт.</p></div>`}
+    </div>
+  `;
+}
+
+async function renderOwnerDashboard() {
+  const data = await loadOwnerData();
+  renderOwnerContent(data);
+}
+
 function renderAllSections(data) {
   renderScheduleSection(data);
   renderSalarySection(data);
   renderFinesSection(data);
   renderStatsSection(data);
   renderProfileSection(data);
+  if (data.role === "owner") {
+    renderOwnerDashboard().catch(console.warn);
+  }
 
   if (data.role === "admin" || data.role === "owner") {
     setupAdminAccess();
@@ -1143,3 +1261,19 @@ function startShiftTimer() {
 
 loadData();
 
+
+
+// owner refresh handler
+document.addEventListener("click", async (event) => {
+  const refreshBtn = event.target.closest("[data-owner-refresh]");
+  if (!refreshBtn) return;
+
+  try {
+    refreshBtn.disabled = true;
+    await renderOwnerDashboard();
+  } catch (error) {
+    alert("Ошибка обновления бизнес-панели: " + error.message);
+  } finally {
+    refreshBtn.disabled = false;
+  }
+});

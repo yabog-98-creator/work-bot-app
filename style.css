@@ -2435,3 +2435,240 @@ body {
     height: 84px !important;
   }
 }
+
+
+/* =========================
+   V28 PREMIUM BUSINESS DASHBOARD
+========================= */
+
+.bottom-nav.owner-mode {
+  grid-template-columns: repeat(6, 1fr) !important;
+  max-width: 430px;
+}
+
+.owner-nav.hidden {
+  display: none !important;
+}
+
+.v28-owner-hero {
+  padding: 24px;
+  border-radius: 30px;
+  background:
+    radial-gradient(circle at 85% 10%, rgba(49,255,137,0.18), transparent 34%),
+    radial-gradient(circle at 10% 0%, rgba(166,99,255,0.24), transparent 38%),
+    linear-gradient(135deg, rgba(23, 26, 50, 0.96), rgba(6, 8, 18, 0.92));
+  border: 1px solid rgba(255,255,255,0.12);
+  box-shadow: 0 24px 60px rgba(0,0,0,0.36);
+  margin-bottom: 16px;
+}
+
+.v28-owner-hero h3 {
+  font-size: 34px;
+  line-height: 1;
+  margin: 10px 0 8px;
+  letter-spacing: -1px;
+}
+
+.v28-owner-hero p {
+  color: #b8bdcf;
+  margin: 0 0 18px;
+  font-size: 15px;
+}
+
+.v28-owner-progress {
+  height: 13px;
+  background: rgba(255,255,255,0.13);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.v28-owner-progress div {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #31ff89, #8dffbe);
+  box-shadow: 0 0 18px rgba(49,255,137,0.32);
+}
+
+.v28-owner-progress-row {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 10px;
+  color: #c6cad8;
+}
+
+.v28-owner-progress-row strong {
+  color: #31ff89;
+}
+
+.v28-owner-money {
+  position: relative;
+  padding: 22px;
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at 90% 20%, rgba(88,190,255,0.18), transparent 35%),
+    linear-gradient(135deg, rgba(0,0,0,0.22), rgba(255,255,255,0.055));
+  border: 1px solid rgba(255,255,255,0.10);
+  margin: 16px 0;
+  overflow: hidden;
+}
+
+.v28-owner-money-value {
+  font-size: 42px;
+  font-weight: 950;
+  margin-top: 8px;
+  letter-spacing: -1px;
+}
+
+.v28-owner-money-icon {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  font-size: 50px;
+  opacity: 0.95;
+  filter: drop-shadow(0 12px 20px rgba(0,0,0,0.34));
+}
+
+.v28-owner-money-meta {
+  margin-top: 16px;
+  padding: 12px;
+  border-radius: 18px;
+  background: rgba(0,0,0,0.18);
+  display: flex;
+  justify-content: space-between;
+  color: #b8bdcf;
+}
+
+.v28-owner-money-meta strong {
+  color: white;
+}
+
+.v28-owner-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 16px 0 18px;
+}
+
+.v28-owner-actions button {
+  min-height: 78px;
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 24px;
+  background: rgba(255,255,255,0.07);
+  color: white;
+  font-size: 26px;
+  font-weight: 900;
+}
+
+.v28-owner-actions span {
+  display: block;
+  font-size: 13px;
+  margin-top: 7px;
+}
+
+.v28-owner-list {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.v28-owner-shift {
+  padding: 14px;
+  border-radius: 22px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(0,0,0,0.20);
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.v28-owner-shift.confirmed {
+  background:
+    radial-gradient(circle at 100% 0%, rgba(49,255,137,0.10), transparent 34%),
+    rgba(0,0,0,0.20);
+}
+
+.v28-owner-shift.waiting {
+  background:
+    radial-gradient(circle at 100% 0%, rgba(255,200,87,0.12), transparent 34%),
+    rgba(0,0,0,0.20);
+}
+
+.v28-owner-shift-left {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  min-width: 0;
+}
+
+.v28-owner-status {
+  width: 42px;
+  height: 42px;
+  border-radius: 15px;
+  background: rgba(255,255,255,0.08);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.v28-owner-shift strong {
+  display: block;
+  font-size: 17px;
+}
+
+.v28-owner-shift span {
+  display: block;
+  color: #aeb3c5;
+  font-size: 13px;
+  margin-top: 3px;
+}
+
+.v28-owner-pill {
+  padding: 8px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.v28-owner-pill.confirmed {
+  color: #31ff89;
+  background: rgba(49,255,137,0.10);
+}
+
+.v28-owner-pill.waiting {
+  color: #ffd76f;
+  background: rgba(255,200,87,0.12);
+}
+
+@media (max-width: 390px) {
+  .bottom-nav.owner-mode {
+    width: calc(100% - 16px);
+    padding: 7px;
+  }
+
+  .bottom-nav.owner-mode button {
+    font-size: 18px;
+  }
+
+  .bottom-nav.owner-mode button span {
+    font-size: 9px;
+  }
+
+  .v28-owner-hero h3 {
+    font-size: 29px;
+  }
+
+  .v28-owner-money-value {
+    font-size: 34px;
+  }
+
+  .v28-owner-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .v28-owner-shift {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
