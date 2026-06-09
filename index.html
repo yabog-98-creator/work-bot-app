@@ -15,7 +15,7 @@
         <div class="brand">ZDRASTE WORK</div>
         <div class="subtitle">твой рабочий центр</div>
       </div>
-      <button class="icon-btn bell">🔔<span id="notifyCount">0</span></button>
+      <button class="icon-btn bell" data-scroll="newsSection">🔔<span id="notifyCount">0</span></button>
     </header>
 
     <div id="loading" class="loading">Загружаем данные...</div>
@@ -201,6 +201,29 @@
         <div id="statsContent"></div>
       </section>
 
+
+      <section id="advancesSection" class="app-section page-card">
+        <div class="page-title">
+          <span>💳</span>
+          <div>
+            <h2>Авансы</h2>
+            <p>История авансов и сумма к вычету</p>
+          </div>
+        </div>
+        <div id="advancesContent"></div>
+      </section>
+
+      <section id="newsSection" class="app-section page-card">
+        <div class="page-title">
+          <span>📢</span>
+          <div>
+            <h2>Новости</h2>
+            <p>Объявления, зарплаты и важные сообщения</p>
+          </div>
+        </div>
+        <div id="newsContent"></div>
+      </section>
+
       <section id="profileSection" class="app-section page-card">
         <div class="page-title">
           <span>👤</span>
@@ -242,8 +265,9 @@
       <button data-scroll="scheduleSection">📅<span>График</span></button>
       <button data-scroll="salarySection">💳<span>Зарплата</span></button>
       <button data-scroll="finesSection">📄<span>Штрафы</span></button>
+      <button data-scroll="advancesSection">💳<span>Авансы</span></button>
+      <button data-scroll="newsSection">📢<span>Новости</span></button>
       <button data-scroll="profileSection">👤<span>Профиль</span></button>
-      <button class="owner-nav hidden" data-scroll="ownerSection">🏢<span>Бизнес</span></button>
     </nav>
   </div>
 
